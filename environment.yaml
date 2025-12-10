@@ -1,0 +1,23 @@
+name: cmip6-commodity
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - xarray>=0.20.0
+  - netcdf4>=1.6.0
+  - dask>=2022.0.0
+  - cdo>=1.9.8
+  - cartopy>=0.20.0
+  - numpy>=1.21.0
+  - pandas>=1.4.0
+  - scikit-learn>=1.0.0
+  - matplotlib>=3.5.0
+  - seaborn>=0.11.0
+  - jupyter>=1.0.0
+  - pip
+  - pip:
+    - prophet>=1.1.0
+    - darts>=0.24.0
+    - esgf-pyclient>=0.2.0
+    - cmip6-utils>=0.1.0
