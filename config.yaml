@@ -1,0 +1,40 @@
+project:
+  name: "US_Corn_Price_Forecast"
+  commodity: "corn"
+  region: "US_Corn_Belt"
+  
+cmip6:
+  scenarios:
+    - "ssp245"
+    - "ssp585"
+  models:
+    - "NorESM2-MM"
+    - "MIROC6"
+    - "CanESM5"
+  variables:
+    - "tasmax"  # 日最高温度
+    - "pr"      # 降水量
+    - "hurs"    # 相对湿度
+  historical_period: "1980-2014"
+  future_period: "2025-2100"
+  
+region:
+  bbox: [35.0, -100.0, 50.0, -80.0]  # 纬度/经度边界
+  states: ["Iowa", "Illinois", "Nebraska", "Minnesota", "Indiana"]
+  
+agriculture:
+  growing_season:
+    start: "05-01"  # 月-日
+    end: "09-30"
+  heat_stress_threshold: 35.0  # 摄氏度
+  drought_threshold: -1.0      # 标准化降水指数
+  
+economic:
+  price_source: "CBOT"  # 芝加哥期货交易所
+  yield_source: "USDA"  # 美国农业部
+  frequency: "monthly"
+  
+model:
+  forecast_horizon: 30  # 年
+  validation_split: 0.8
+  random_seed: 42
