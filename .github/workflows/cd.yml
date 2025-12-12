@@ -1,0 +1,34 @@
+name: Build-Push-Deploy
+on:
+  push:
+    branches: [main]
+env:
+  IMAGE: yourdockerhub/cmip6_price_forecaster:${{ github.sha }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+      - name: Build & Push
+        run: |
+          docker build -t ${{ env.IMAGE }} .
+          docker push ${{ env.IMAGE }}
+          docker tag ${{ env.IMAGE }} yourdockerhub/cmip6_price_forecaster:latest
+          docker push yourdockerhub/cmip6_price_forecaster:latest
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: cmip6-price-forecaster
+          image: yourdockerhub/cmip6_price_forecaster:latest
+          region: us-central1
+          flags: --allow-unauthenticated --memory=2Gi --cpu=1 --max-instances=3
