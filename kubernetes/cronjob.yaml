@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cmip6-retrain
+spec:
+  schedule: "0 2 1 1 *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: train
+            image: yourdockerhub/cmip6_price_forecaster:latest
+            command: ["python","cli.py","train"]
+          restartPolicy: OnFailure
