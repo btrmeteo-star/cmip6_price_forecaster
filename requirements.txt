@@ -1,79 +1,16 @@
-# 核心科学计算
-numpy>=1.24.0
-scipy>=1.10.0
-pandas>=2.0.0
-xarray>=2023.0.0
-dask>=2023.0.0
-netcdf4>=1.6.0
+# ---- 原有 ----
+pandas>=1.5
+xarray>=2023.1
+netcdf4
+prophet>=1.1
+scikit-learn>=1.3
+hydra-core>=1.3
 
-# 气候数据处理
-cdo>=1.9.8
-esgf-pyclient>=0.7.0
-cf-python>=3.15.0
-iris>=3.6.0
-
-# 机器学习与统计
-scikit-learn>=1.3.0
-statsmodels>=0.14.0
-prophet>=1.1.0
-darts>=0.24.0
-xgboost>=1.7.0
-lightgbm>=4.0.0
-
-# 深度学习
-torch>=2.0.0
-tensorflow>=2.13.0
-keras>=3.0.0
-
-# 可视化
-matplotlib>=3.7.0
-seaborn>=0.12.0
-plotly>=5.15.0
-bokeh>=3.2.0
-cartopy>=0.21.0
-geopandas>=0.13.0
-
-# 地理空间处理
-rasterio>=1.3.0
-shapely>=2.0.0
-pyproj>=3.5.0
-
-# 数据处理工具
-pyyaml>=6.0
-python-dotenv>=1.0.0
-tqdm>=4.65.0
-joblib>=1.3.0
-openpyxl>=3.1.0
-
-# API与网络请求
-requests>=2.31.0
-yfinance>=0.2.0
-alpha-vantage>=2.3.0
-
-# 开发工具
-jupyter>=1.0.0
-ipykernel>=6.0
-black>=23.0
-flake8>=6.0
-pytest>=7.4.0
-pytest-cov>=4.1.0
-mypy>=1.5.0
-pre-commit>=3.4.0
-
-# 文档生成
-sphinx>=7.1.0
-nbsphinx>=0.9.0
-pydata-sphinx-theme>=0.13.0
-
-# 可选：Web应用
-streamlit>=1.27.0
-dash>=2.14.0
-flask>=3.0.0
-
-# 可选：高性能计算
-numba>=0.58.0
-cupy-cuda11x>=12.0.0 ; sys_platform != 'win32'
-
-# 系统工具
-psutil>=5.9.0
-memory-profiler>=0.61.0
+# ---- 新增 ----
+torch>=2.1           # ensemble_model 若用 PyTorch
+fastapi>=0.103
+uvicorn[standard]>=0.23
+pydantic>=2.0
+joblib
+gunicorn
+python-multipart
