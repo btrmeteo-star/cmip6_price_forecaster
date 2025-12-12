@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cmip6-price
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: cmip6-price}
+  template:
+    metadata:
+      labels: {app: cmip6-price}
+    spec:
+      containers:
+      - name: api
+        image: yourdockerhub/cmip6_price_forecaster:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          limits: {memory: "2Gi", cpu: "1000m"}
+        readinessProbe:
+          httpGet: {path: /health, port: 8000}
+          initialDelaySeconds: 10
