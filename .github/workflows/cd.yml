@@ -28,8 +28,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: FATCHAN      # 必须建 DOCKER_USER  secret
-          password: ${{ secrets.DOCKER_PASSWORD }}  # 必须建 DOCKER_PASSWORD secret
+          username: fatchan      # 必须建 DOCKER_USER  secret
+          password: ${{ dckr_pat_RxXSy4cdmyedP6oBitq3hZgL5vg }}  # 必须建 DOCKER_PASSWORD secret
 
       - name: Docker meta
         id: meta
