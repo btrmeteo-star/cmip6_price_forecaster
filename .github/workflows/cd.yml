@@ -29,7 +29,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: cmip6_forecaster      # 必须建 DOCKER_USER  secret
-          password: ${{ dckr_pat_RxXSy4cdmyedP6oBitq3hZgL5vg }}  # 必须建 DOCKER_PASSWORD secret
+          password: ${{ secrets.DOCKER_PASSWORD }}  # 必须建 DOCKER_PASSWORD secret
 
       - name: Docker meta
         id: meta
