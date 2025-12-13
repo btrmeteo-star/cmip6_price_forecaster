@@ -7,11 +7,13 @@ on:
 env:
   IMAGE_NAME: cmip6_price_forecaster
   REGISTRY: docker.io
-  DOCKERHUB_REPO: btrmeteo/cmip6_price_forecaster   # ← 改成你的 Hub 倉庫
+  DOCKERHUB_REPO: yourdockerhub/cmip6_price_forecaster   # ← 改成自己的
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      has_gcp: ${{ steps.check_gcp.outputs.has_gcp }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,16 +49,29 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
+      # ---------- 检测 GCP_SA_KEY 是否存在 ----------
+      - name: Check GCP secret exists
+        id: check_gcp
+        shell: bash
+        run: |
+          if [[ -n "${{ secrets.GCP_SA_KEY }}" ]]; then
+            echo "has_gcp=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_gcp=false" >> $GITHUB_OUTPUT
+          fi
+
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ secrets.GCP_SA_KEY != '' }}   # 有 GCP 金鑰才部署
+    if: needs.build-and-push.outputs.has_gcp == 'true'
     steps:
       - uses: actions/checkout@v4
-      - id: auth
+
+      - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - name: Deploy Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
@@ -64,3 +79,6 @@ jobs:
           image: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_REPO }}:latest
           region: us-central1
           flags: --allow-unauthenticated --memory=2Gi --cpu=1 --max-instances=3 --port=8000
+
+      - name: Show URL
+        run: echo "Cloud Run URL ${{ steps.deploy.outputs.url }}"
