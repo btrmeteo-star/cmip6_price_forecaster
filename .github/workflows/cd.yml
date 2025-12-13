@@ -26,8 +26,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ FATCHAN }}
+          password: ${{ dckr_pat_Y9hoqdQR7BhpTL5-y0E67ncMLxY }}
 
       - name: Docker meta
         id: meta
