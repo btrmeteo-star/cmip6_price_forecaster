@@ -29,8 +29,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ fatchan }}
-          password: ${{ dckr_pat_zgThXgyeD3tNUnRn05oDK9S_KCk }}
+          username: ${{ FATCHAN }}
+          password: ${{ zero593594 }}
 
       - name: Extract metadata
         id: meta
