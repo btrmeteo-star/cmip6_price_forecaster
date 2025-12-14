@@ -1,19 +1,2 @@
-# ---- 原有 ----
-pandas>=1.5
-xarray>=2023.1
-netcdf4
-prophet>=1.1
-scikit-learn>=1.3
-hydra-core>=1.3
-
-# ---- 新增 ----
-torch>=2.1           # ensemble_model 若用 PyTorch
-fastapi>=0.103
-uvicorn[standard]>=0.23
-pydantic>=2.0
-joblib
-gunicorn
-python-multipart
-
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
