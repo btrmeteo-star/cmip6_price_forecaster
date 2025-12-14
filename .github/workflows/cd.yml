@@ -29,7 +29,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: fatchan      # 必须建 DOCKER_USER  secret
-          password: ${{ dckr_pat_SDW7OcjgCaQkZNz3Cc4lIfogKc8 }}  # 必须建 DOCKER_PASSWORD secret
+          password: ${{ secrets.DOCKER_PASSWORD }}  # 必须建 DOCKER_PASSWORD secret
 
       - name: Docker meta
         id: meta
