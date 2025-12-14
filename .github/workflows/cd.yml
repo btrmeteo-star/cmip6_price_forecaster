@@ -5,9 +5,8 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: cmip6_price_forecaster
   REGISTRY: docker.io
-  DOCKERHUB_REPO: fatchan/cmip6_price_forecaster   # ← 用户名/仓库名，纯字符串
+  DOCKERHUB_REPO: fatchan/cmip6_price_forecaster   # 必须与 Docker Hub 仓库一致
 
 jobs:
   build-and-push:
@@ -24,12 +23,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: fatchan      # 必须建 DOCKER_USER  secret
-          password: ${{ secrets.DOCKER_PASSWORD }}  # 必须建 DOCKER_PASSWORD secret
+      # ===== 一次性明文登录（调通后请换回 secret） =====
+      - name: Log in to Docker Hub (plain text debug)
+        run: |
+          echo 'dckr_pat_SDW7OcjgCaQkZNz3Cc4lIfogKc8' | docker login -u fatchan --password-stdin
+      # =====================================================
 
       - name: Docker meta
         id: meta
@@ -53,7 +51,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 检测 GCP 密钥是否存在
+      # 检测 GCP 密钥是否存在（可选）
       - name: Check GCP secret
         id: check_gcp
         shell: bash
@@ -81,6 +79,3 @@ jobs:
           image: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_REPO }}:latest
           region: us-central1
           flags: --allow-unauthenticated --memory=2Gi --cpu=1 --max-instances=3 --port=8000
-
-      - name: Show URL
-        run: echo "Cloud Run endpoint ${{ steps.deploy.outputs.url }}"
