@@ -84,3 +84,4 @@ jobs:
           image: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_REPO }}:latest
           region: us-central1
           flags: --allow-unauthenticated --memory=2Gi --cpu=1 --max-instances=3 --port=8000
+          
