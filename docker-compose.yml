@@ -30,8 +30,7 @@ services:
       - "8001"
     volumes:
       - mlflow_data:/mlflow
-    command: bash -c "pip install mlflow &&
-               mlflow server --host 0.0.0.0 --port 8001 --backend-store-uri sqlite:///mlflow/mlflow.db --default-artifact-root /mlflow/artifacts"
+    command: bash -c "pip install mlflow && mlflow server --host 0.0.0.0 --port 8001 --backend-store-uri sqlite:///mlflow/mlflow.db --default-artifact-root /mlflow/artifacts"
     networks:
       - app-net
 
