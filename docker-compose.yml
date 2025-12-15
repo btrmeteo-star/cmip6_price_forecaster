@@ -1,32 +1,43 @@
-name: cmip6-mlflow
-
 services:
-  mlflow:
-    image: python:3.11-slim
+  nginx:
+    image: nginx:alpine
     ports:
-      - "5000:5000"
+      - "8000:8000"          # 唯一对外端口
     volumes:
-      - mlflow_data:/mlflow
-    # 必须同一行内写全参数，避免 YAML 折行失效
-    command: bash -c "pip install mlflow && mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow/mlflow.db --default-artifact-root /mlflow/artifacts"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 3s
-      timeout: 3s
-      retries: 5
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - mlflow
+    networks:
+      - app-net
 
   api:
     build: .
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - MODEL_PATH=/app/models/xgb.pkl
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-    depends_on:
-      - mlflow
+      - MLFLOW_TRACKING_URI=http://mlflow:8001
     volumes:
       - ./data:/app/data
       - ./models:/app/models
+    networks:
+      - app-net
+
+  mlflow:
+    image: python:3.11-slim
+    expose:
+      - "8001"
+    volumes:
+      - mlflow_data:/mlflow
+    # 关键：换端口 + 必须 0.0.0.0
+    command: bash -c "pip install mlflow && mlflow server --host 0.0.0.0 --port 8001 --backend-store-uri sqlite:///mlflow/mlflow.db --default-artifact-root /mlflow/artifacts"
+    networks:
+      - app-net
 
 volumes:
   mlflow_data:
+
+networks:
+  app-net:
+    driver: bridge
