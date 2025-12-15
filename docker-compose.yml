@@ -1,42 +1,32 @@
-services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./data:/app/data          # CMIP6 & spot 数据
-      - ./models:/app/models      # 模型持久化
-      - ./mlruns:/app/mlruns      # 本地 runs 备份
-    environment:
-      - MODEL_PATH=/app/models/xgb.pkl
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - MLFLOW_S3_ENDPOINT_URL=http://mlflow:5000
-    depends_on:
-      - mlflow
-    networks:
-      - backend
+name: cmip6-mlflow
 
+services:
   mlflow:
     image: python:3.11-slim
     ports:
       - "5000:5000"
     volumes:
       - mlflow_data:/mlflow
-      - ./mlruns:/app/mlruns
-    # 关键：必须 --host 0.0.0.0，否则 Codespaces 转发报 502
-    command: >
-      bash -c "pip install mlflow &&
-               mlflow server 
-                 --host 0.0.0.0 
-                 --port 5000 
-                 --backend-store-uri sqlite:///mlflow/mlflow.db 
-                 --default-artifact-root /mlflow/artifacts"
-    networks:
-      - backend
+    # 必须同一行内写全参数，避免 YAML 折行失效
+    command: bash -c "pip install mlflow && mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow/mlflow.db --default-artifact-root /mlflow/artifacts"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_PATH=/app/models/xgb.pkl
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - mlflow
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
 
 volumes:
   mlflow_data:
-
-networks:
-  backend:
-    driver: bridge
