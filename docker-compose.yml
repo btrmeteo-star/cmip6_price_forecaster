@@ -1,5 +1,5 @@
 services:
-  nginx:
+    nginx:
     image: nginx:alpine
     ports:
       - "8000:8000"
@@ -10,6 +10,12 @@ services:
       - mlflow
     networks:
       - app-net
+    # 关键：等 api/mlflow 真正 ready 再启动
+    healthcheck:
+      test: ["CMD", "/bin/sh", "-c", "host api && host mlflow"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
 
   api:
     build: .
