@@ -1,0 +1,19 @@
+stages:
+  features:
+    cmd: python -m src.features.build_features --nc data/cmip6.nc --spot data/spot.csv --out data/features.parquet
+    deps:
+      - data/cmip6.nc
+      - data/spot.csv
+      - src/features/build_features.py
+    outs:
+      - data/features.parquet
+
+  train:
+    cmd: python -m src.models.train --in data/features.parquet --model-out models/xgb.pkl --metrics metrics.json
+    deps:
+      - data/features.parquet
+      - src/models/train.py
+    outs:
+      - models/xgb.pkl
+    metrics:
+      - metrics.json
