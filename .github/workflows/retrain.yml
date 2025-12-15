@@ -1,0 +1,29 @@
+name: Retrain-Model
+on:
+  schedule:
+    - cron: '0 3 * * 0'   # 每週日 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: |
+          pip install -r requirements-ml.txt
+          dvc repro train
+      - name: Upload model & metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-artifact
+          path: |
+            models/xgb.pkl
+            metrics.json
+      - name: Commit new model
+        run: |
+          git config user.name "github-actions"
+          git config user.name "github-actions@github.com"
+          git add models/xgb.pkl metrics.json dvc.lock
+          git diff --cached --quiet || (git commit -m "auto: retrain model" && git push)
