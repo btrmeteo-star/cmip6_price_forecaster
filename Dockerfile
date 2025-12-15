@@ -1,15 +1,20 @@
-# ---- build ----
-FROM python:3.11-slim as builder
-WORKDIR /app
-COPY requirements-api.txt .
-RUN pip install --user -r requirements-api.txt
-
-# ---- runtime ----
 FROM python:3.11-slim
 WORKDIR /app
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
+
+# 系統相依
+RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
+
+# Python 相依
+COPY requirements-api.txt .
+RUN pip install --no-cache-dir -r requirements-api.txt
+
+# 原始碼
 COPY src/ ./src
-COPY models/xgb.pkl ./models/
-ENV MODEL_PATH=models/xgb.pkl
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY dvc.yaml pyproject.toml ./
+# 若映像內找不到模型，則在啟動時自動重訓
+RUN mkdir -p /app/models
+
+# 入口腳本
+COPY scripts/startup.sh /app/startup.sh
+RUN chmod +x /app/startup.sh
+CMD ["/app/startup.sh"]
