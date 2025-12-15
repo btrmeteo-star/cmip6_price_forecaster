@@ -1,12 +1,26 @@
 version: "3.9"
 services:
-  cmip6-price:
+  api:
     build: .
-    image: yourdockerhub/cmip6_price_forecaster:latest
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data          # 掛載 CMIP6 與行情資料
+      - ./data:/app/data        # 掛載本地 CMIP6 與現貨 csv
+      - ./models:/app/models    # 掛載模型（第一次若無會自動重訓）
     environment:
-      - CUDA_VISIBLE_DEVICES=0
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+      - MODEL_PATH=/app/models/xgb.pkl
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - mlflow
+
+  mlflow:
+    image: python:3.11-slim
+    command: >
+      bash -c "pip install mlflow && mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlflow.db --default-artifact-root /mlflow/artifacts"
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+
+volumes:
+  mlflow-data:
