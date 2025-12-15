@@ -63,4 +63,24 @@ include = ["*"]
 
 [tool.black]
 line-length = 88
-target-version = ['py39']
+target-version = ['py39'][tool.poetry]
+name = "cmip6-commodity"
+version = "0.1.0"
+description = ""
+authors = []
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.0"
+fastapi = "^0.111"
+uvicorn = {extras = ["standard"], version = "^0.24"}
+xgboost = "^1.7"
+scikit-learn = "^1.3"
+joblib = "^1.3"
+xarray = "^2023.6"
+requests = "^2.31"
+click = "^8.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
