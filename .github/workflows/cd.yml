@@ -7,13 +7,14 @@ on:
 
 env:
   REGISTRY: docker.io
-  DOCKERHUB_REPO: fatchan/cmip6_price_forecaster   # 与 DockerHub 仓库保持一致
+  DOCKERHUB_REPO: ${{ secrets.DOCKER_USER }}/cmip6_price_forecaster
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  SERVICE_NAME: cmip6-price-forecaster
 
 jobs:
-  build-and-push:
+  build-push-deploy:
     runs-on: ubuntu-latest
-    outputs:
-      has_gcp: ${{ steps.check_gcp.outputs.has_gcp }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,18 +29,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKER_USER }}      # 务必在仓库 secret 里配置
-          password: ${{ secrets.DOCKER_PASSWORD }}  # 同上
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_REPO }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -48,27 +39,9 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_REPO }}:latest
 
-      - name: Check GCP secret
-        id: check_gcp
-        shell: bash
-        run: |
-          if [[ -n "${{ secrets.GCP_SA_KEY }}" ]]; then
-            echo "has_gcp=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_gcp=false" >> "$GITHUB_OUTPUT"
-          fi
-
-  deploy-cloud-run:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: needs.build-and-push.outputs.has_gcp == 'true'
-    steps:
-      - name: Google Auth
+      - name: Setup Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -76,8 +49,15 @@ jobs:
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: cmip6-price-forecaster
+          service: ${{ env.SERVICE_NAME }}
           image: ${{ env.REGISTRY }}/${{ env.DOCKERHUB_REPO }}:latest
-          region: us-central1
+          region: ${{ env.GCP_REGION }}
           flags: --allow-unauthenticated --memory=2Gi --cpu=1 --max-instances=3 --port=8000
+
+      - name: Health Check
+        run: |
+          echo "⏳ 等待 Cloud Run 就绪..."
+          sleep 30
+          curl -f https://${{ env.SERVICE_NAME }}-${{ secrets.GCP_PROJECT_ID }}.uc.r.appgate.com/ || exit 1
+        continue-on-error: false
           
