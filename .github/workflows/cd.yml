@@ -45,6 +45,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       # ④ 健康检查
+      - name: Health Check
         run: |
           echo "⏳ 等待 Fly.io 就绪..."
           sleep 30
