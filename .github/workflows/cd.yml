@@ -24,22 +24,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ① 登录 Fly.io（零密码）
+      # ① 安装 Fly.io CLI（零密码）
       - name: Install Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@v1
 
-      - name: Log in to Fly.io
-        run: |
-          fly auth login --access-token ${{ secrets.FLY_API_TOKEN }}
-
-      # ② 构建并推送
-      - name: Build and push
-        run: |
-          fly deploy --app ${{ env.FLY_APP_NAME }} --image-tag latest --wait-timeout 300
+      # ② 一键部署（零密码）
+      - name: Deploy to Fly.io
+        uses: superfly/flyctl-actions@v1
+        with:
+          args: deploy --app ${{ env.FLY_APP_NAME }} --image-tag latest --wait-timeout 300
+          secrets: |
+            FLY_API_TOKEN=${{ secrets.FLY_API_TOKEN }}
 
       # ③ 健康检查
       - name: Health Check
         run: |
           echo "⏳ 等待 Fly.io 就绪..."
           sleep 30
-          curl -f https://${{ env.FLY_APP_NAME }}.fly.dev/ || exit 1exit 1
+          curl -f https://${{ env.FLY_APP_NAME }}.fly.dev/ || exit 1
