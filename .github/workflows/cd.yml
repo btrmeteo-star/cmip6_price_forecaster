@@ -32,7 +32,7 @@ jobs:
       - name: Deploy to Fly.io
         uses: superfly/flyctl-actions@v1
         with:
-          args: deploy --app ${{ env.FLY_APP_NAME }} --image-tag latest --wait-timeout 300
+          args: deploy --app ${{ env.FLY_APP_NAME }} --wait-timeout 300
           secrets: |
             FLY_API_TOKEN=${{ secrets.FLY_API_TOKEN }}
 
