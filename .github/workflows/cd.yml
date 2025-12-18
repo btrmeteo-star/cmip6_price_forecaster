@@ -6,18 +6,13 @@ on:
   workflow_dispatch:
 
 env:
-  REGISTRY: ghcr.io
+  REGISTRY: fly.io
   IMAGE_NAME: ${{ github.repository }}
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GCP_REGION: ${{ secrets.GCP_REGION }}
-  SERVICE_NAME: cmip6-price-forecaster
+  FLY_APP_NAME: cmip6-price-forecaster
 
 jobs:
   build-push-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - name: Checkout
@@ -29,37 +24,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # ① 登录 Fly.io（零密码）
+      - name: Install Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@v1
 
+      - name: Log in to Fly.io
+        run: |
+          fly auth login --access-token ${{ secrets.FLY_API_TOKEN }}
+
+      # ② 构建并推送
       - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/${{ env.IMAGE_NAME }}:latest
+        run: |
+          fly deploy --app ${{ env.FLY_APP_NAME }} --image-tag latest --wait-timeout 300
 
-      - name: Setup Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.SERVICE_NAME }}
-          image: ghcr.io/${{ env.IMAGE_NAME }}:latest
-          region: ${{ env.GCP_REGION }}
-          flags: --allow-unauthenticated --memory=2Gi --cpu=1 --max-instances=3 --port=8000
-
+      # ③ 健康检查
       - name: Health Check
         run: |
-          echo "⏳ 等待 Cloud Run 就绪..."
+          echo "⏳ 等待 Fly.io 就绪..."
           sleep 30
-          curl -f https://${{ env.SERVICE_NAME }}-${{ secrets.GCP_PROJECT_ID }}.uc.r.appgate.com/ || exit 1
+          curl -f https://${{ env.FLY_APP_NAME }}.fly.dev/ || exit 1exit 1
