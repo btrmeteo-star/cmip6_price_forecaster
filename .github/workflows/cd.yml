@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-buildx-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -44,9 +44,9 @@ jobs:
           push: true
           tags: ghcr.io/${{ env.IMAGE_NAME }}:latest
 
-      # ③ 健康检查（本地隧道）
+      # ③ 健康检查（Codespaces 端口转发）
       - name: Health Check
         run: |
-          echo "⏳ 等待本地隧道就绪..."
+          echo "⏳ 等待 Codespaces 端口就绪..."
           sleep 30
           curl -f https://<id>-8000.app.github.dev/ || exit 1
