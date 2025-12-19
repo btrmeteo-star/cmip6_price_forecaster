@@ -8,7 +8,7 @@ on:
 env:
   REGISTRY: fly.io
   IMAGE_NAME: ${{ github.repository }}
-  FLY_APP_NAME: cmip6-price-forecaster
+  FLY_APP_NAME: cmip6-price-forecaster**
 
 jobs:
   build-push-deploy:
@@ -32,7 +32,7 @@ jobs:
       - name: Create Fly.io App
         uses: superfly/flyctl-actions@v1
         with:
-          args: apps create --name ${{ env.FLY_APP_NAME }} --region sin --yes
+          args: apps create --name ${{ env.FLY_APP_NAME }} --yes
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
