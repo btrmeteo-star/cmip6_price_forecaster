@@ -49,4 +49,4 @@ jobs:
         run: |
           echo "⏳ 等待 Codespaces 端口就绪..."
           sleep 30
-          curl -f https://<id>-8000.app.github.dev/ || exit 1   
+          curl -f https://https://verbose-space-waffle-7v6wvqw4wxp5hrvw6--8000.app.github.dev/ || exit 1
