@@ -3,71 +3,61 @@ name: Retrain CMIP6 Commodity Model
 on:
   push:
     branches: [ main ]
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
   workflow_dispatch:          # 手動觸發按鈕
+  schedule:
+    - cron: '0 14 * * 0'      # 每週日 14:00 UTC
 
 env:
   PYTHON_VERSION: 3.11
   MLFLOW_TRACKING_URI: https://verbose-space-waffle-7v6wvqw4wxp5hrvw6-8000.app.github.dev/mlflow
-  # 若之後換域名，記得同步改
 
 jobs:
   retrain:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write        # 讓 CI 能把新模型 artifact 推回倉庫
-      packages: read
-
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
 
-    - name: Install dependencies
-      run: |
-        # 優先裝專用 data 依賴；若檔案不存在就退回到主 requirements.txt
-        if [ -f requirements-data.txt ]; then
-          pip install -r requirements-data.txt
-        else
-          pip install -r requirements.txt
-        fi
-        # 再裝 API 依賴（可拿掉若不需要）
-        [ -f requirements-api.txt ] && pip install -r requirements-api.txt
-        pip install -e .          # 把本地 src 裝成可 import 的 package
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e .
 
-    - name: Pull latest spot data
-      - run: python -m cmip6_commodity.data.spot
+      - name: Download CMIP6 & spot data
+        run: |
+          bash scripts/fetch_cmip6.sh
+          python -m cmip6_commodity.data.spot
 
-    - name: Train & register model
-      run: |
-        python -m src.train       # 這裡會把 model 登錄到 MLflow
-      env:
-        MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
+      - name: Build features
+        run: |
+          python -m cmip6_commodity.climate_processor
+          python -m cmip6_commodity.feature_engineer
 
-    - name: Upload MLflow artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: mlflow-run
-        path: mlruns/            # 若你把 run 存本地 mlruns，可上傳給 GitHub 留存
+      - name: Retrain model
+        run: |
+          python -m cmip6_commodity.train --max-eval 50
 
-    - name: Commit updated data & model index
-      run: |
-        git config --local user.email "ci@github"
-        git config --local user.name "GitHub CI"
-        git add data/ mlruns/ model/index.json  # 只追蹤想保留的檔案
-        git diff --staged --quiet || git commit -m "ci: update data & model artifacts [skip ci]"
-        git push
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-run
+          path: mlruns/
+
+      - name: Commit new artifacts
+        run: |
+          git config --local user.email "ci@github"
+          git config --local user.name "GitHub CI"
+          git add data/processed/ mlruns/ models/index.json
+          git diff --staged --quiet || git commit -m "ci: update model artifacts [skip ci]"
+          git push
