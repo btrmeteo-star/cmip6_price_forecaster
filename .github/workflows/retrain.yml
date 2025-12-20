@@ -1,29 +1,73 @@
-name: Retrain-Model
+name: Retrain CMIP6 Commodity Model
+
 on:
-  schedule:
-    - cron: '0 3 * * 0'   # 每週日 03:00 UTC
-  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  workflow_dispatch:          # 手動觸發按鈕
+
+env:
+  PYTHON_VERSION: 3.11
+  MLFLOW_TRACKING_URI: https://verbose-space-waffle-7v6wvqw4wxp5hrvw6-8000.app.github.dev/mlflow
+  # 若之後換域名，記得同步改
 
 jobs:
   retrain:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # 讓 CI 能把新模型 artifact 推回倉庫
+      packages: read
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - run: |
-          pip install -r requirements-ml.txt
-          dvc repro train
-      - name: Upload model & metrics
-        uses: actions/upload-artifact@v4
-        with:
-          name: model-artifact
-          path: |
-            models/xgb.pkl
-            metrics.json
-      - name: Commit new model
-        run: |
-          git config user.name "github-actions"
-          git config user.name "github-actions@github.com"
-          git add models/xgb.pkl metrics.json dvc.lock
-          git diff --cached --quiet || (git commit -m "auto: retrain model" && git push)
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        # 優先裝專用 data 依賴；若檔案不存在就退回到主 requirements.txt
+        if [ -f requirements-data.txt ]; then
+          pip install -r requirements-data.txt
+        else
+          pip install -r requirements.txt
+        fi
+        # 再裝 API 依賴（可拿掉若不需要）
+        [ -f requirements-api.txt ] && pip install -r requirements-api.txt
+        pip install -e .          # 把本地 src 裝成可 import 的 package
+
+    - name: Pull latest spot data
+      run: python -m src.data.spot
+
+    - name: Train & register model
+      run: |
+        python -m src.train       # 這裡會把 model 登錄到 MLflow
+      env:
+        MLFLOW_TRACKING_URI: ${{ env.MLFLOW_TRACKING_URI }}
+
+    - name: Upload MLflow artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: mlflow-run
+        path: mlruns/            # 若你把 run 存本地 mlruns，可上傳給 GitHub 留存
+
+    - name: Commit updated data & model index
+      run: |
+        git config --local user.email "ci@github"
+        git config --local user.name "GitHub CI"
+        git add data/ mlruns/ model/index.json  # 只追蹤想保留的檔案
+        git diff --staged --quiet || git commit -m "ci: update data & model artifacts [skip ci]"
+        git push
