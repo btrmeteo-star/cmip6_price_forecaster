@@ -30,7 +30,7 @@ class ClimateProcessor:
     precip_ds = precip_ds.load()
     precip_roll = precip_ds['pr'].rolling(time=scale, center=True).sum()
     # 簡易標準化
-    spi = (roll - roll.mean()) / roll.std()
+    spi = (precip_roll - precip_roll.mean()) / precip_roll.std()
     return spi.rename(f'spi_{scale}month')
 
     def calculate_temp_anomaly(self, tasmax_ds: xr.Dataset) -> xr.DataArray:
