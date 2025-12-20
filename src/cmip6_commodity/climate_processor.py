@@ -26,12 +26,12 @@ class ClimateProcessor:
         return ds
 
     def calculate_spi(self, precip_ds: xr.Dataset, scale: int = 3) -> xr.DataArray:
-        """3 個月累積降水（簡易版 SPI proxy）"""
-        precip_ds = precip_ds.load()  # 再次保險
-        roll = precip_ds['pr'].rolling(time=scale, center=True).sum()
-        # 簡易標準化：(x - μ) / σ
-        spi = (roll - roll.mean()) / roll.std()
-        return spi.rename(f'spi_{scale}month')
+    # 關鍵：當場脫離 dask
+    precip_ds = precip_ds.load()
+    precip_roll = precip_ds['pr'].rolling(time=scale, center=True).sum()
+    # 簡易標準化
+    spi = (roll - roll.mean()) / roll.std()
+    return spi.rename(f'spi_{scale}month')
 
     def calculate_temp_anomaly(self, tasmax_ds: xr.Dataset) -> xr.DataArray:
         """氣溫異常（相對於氣候平均）"""
