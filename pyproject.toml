@@ -1,8 +1,9 @@
 [tool.poetry]
-name = "cmip6-commodity"
+name = "cmip6-commodity"          # 保持原名（wheel 名稱）
 version = "0.1.0"
 description = ""
 authors = []
+packages = [{include = "*", from = "src"}]   # ← 新增這行
 
 [tool.poetry.dependencies]
 python = "^3.11"
