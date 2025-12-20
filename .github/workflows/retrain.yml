@@ -50,7 +50,7 @@ jobs:
         pip install -e .          # 把本地 src 裝成可 import 的 package
 
     - name: Pull latest spot data
-      run: python -m src.data.spot
+      - run: python -m cmip6_commodity.data.spot
 
     - name: Train & register model
       run: |
