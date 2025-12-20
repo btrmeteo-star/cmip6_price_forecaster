@@ -14,7 +14,7 @@ class ClimateProcessor:
         
     def load_cmip6_data(self, filepath):
         """加载CMIP6 NetCDF文件"""
-        ds = xr.open_dataset(filepath, chunks={'time': 100})
+        ds = xr.open_dataset(filepath)   # 不給 chunks，直接載入記憶體
         return ds
     
     def calculate_growing_season_indicators(self, temp_ds, precip_ds):
