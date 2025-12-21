@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-CMIP6 氣象特徵計算器（無 dask 版）
+CMIP6 氣象特徵計算器（完工版）
 - 讀取每日 tasmax / pr NetCDF
-- 純 numpy / pandas 滾動，完全繞過 xarray.rolling
+- 純 pandas + numpy 滾動，完全繞過 xarray.rolling
 - 輸出 csv 供後續訓練
 """
 
@@ -20,7 +20,7 @@ PROC_DIR.mkdir(parents=True, exist_ok=True)
 def load_cmip6(nc_path: Path) -> xr.Dataset:
     """強制載入記憶體，不再用 dask"""
     ds = xr.open_dataset(nc_path)
-    return ds.load()          # 脫離 dask
+    return ds.load()               # 脫離 dask
 
 def rolling_sum_numpy(arr: np.ndarray, window: int) -> np.ndarray:
     """純 numpy 滾動和，邊界補 np.nan"""
@@ -34,7 +34,7 @@ def rolling_mean_numpy(arr: np.ndarray, window: int) -> np.ndarray:
 def calculate_spi(pr: pd.Series, scale: int = 3) -> pd.Series:
     """3 個月累積降水 proxy-SPI"""
     roll = rolling_sum_numpy(pr.values, scale)
-    spi = (roll - np.nanmean(roll)) / np.nanstd(roll)
+    spi  = (roll - np.nanmean(roll)) / np.nanstd(roll)
     return pd.Series(spi, index=pr.index, name=f'spi_{scale}month')
 
 def calculate_temp_anomaly(tas: pd.Series) -> pd.Series:
