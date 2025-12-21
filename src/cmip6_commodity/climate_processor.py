@@ -26,10 +26,6 @@ def rolling_sum_numpy(arr: np.ndarray, window: int) -> np.ndarray:
     """純 numpy 滾動和，邊界補 np.nan"""
     return np.convolve(arr, np.ones(window), mode='same')
 
-def rolling_mean_numpy(arr: np.ndarray, window: int) -> np.ndarray:
-    """純 numpy 滾動平均，邊界補 np.nan"""
-    return np.convolve(arr, np.ones(window) / window, mode='same')
-
 # ---------- 指標 ----------
 def calculate_spi(pr: pd.Series, scale: int = 3) -> pd.Series:
     """3 個月累積降水 proxy-SPI"""
