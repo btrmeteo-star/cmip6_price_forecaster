@@ -1,22 +1,60 @@
-name: Daily-Data-Sync
+name: Daily Data Sync
+
 on:
   schedule:
-    - cron: '30 0 * * *'   # 00:30 UTC
-  workflow_dispatch:
+    - cron: '0 6 * * *'   # 每天 06:00 UTC
+  workflow_dispatch:      # 手動觸發按鈕
+
+env:
+  PYTHON_VERSION: 3.11
+  MLFLOW_TRACKING_URI: https://verbose-space-waffle-7v6wvqw4wxp5hrvw6-8000.app.github.dev/mlflow
 
 jobs:
-  sync:
+  data-sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - run: |
-          pip install -r requirements-data.txt
-          python -m src.data.spot
-      - name: Commit & Push
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+
+      - name: Install dependencies
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add data/spot.csv
-          git diff --cached --quiet || (git commit -m "auto: update spot prices" && git push)
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements-data.txt
+          pip install -e .                    # ← 關鍵：讓 src 變成可 import 模組
+
+      - name: Download latest spot & CMIP6 data
+        run: |
+          bash scripts/fetch_cmip6.sh
+          python -m cmip6_commodity.data.spot
+
+      - name: Build features
+        run: |
+          python -m cmip6_commodity.climate_processor
+          python -m cmip6_commodity.feature_engineer
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-data-artifacts
+          path: |
+            data/raw/
+            data/processed/
+
+      - name: Commit new data artifacts
+        run: |
+          git config --local user.email "ci@github"
+          git config --local user.name "GitHub CI"
+          git add data/raw/ data/processed/
+          git diff --staged --quiet || git commit -m "ci: update daily data [skip ci]"
+          git push
