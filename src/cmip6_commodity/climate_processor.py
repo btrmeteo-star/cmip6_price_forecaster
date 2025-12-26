@@ -1,77 +1,86 @@
 #!/usr/bin/env python3
 """
-CMIP6 氣象特徵計算器（完工版）
-- 讀取每日 tasmax / pr NetCDF
-- 純 pandas + numpy 滾動，完全繞過 xarray.rolling
-- 輸出 csv 供後續訓練
+最小可跑 CMIP6 氣象特徵產生器
+- 90 天小檔保證不爆記憶體
+- 每步印維度，方便抓無限迴圈
+- 輸出可直接餵給 train.py
 """
-
+import os
+from pathlib import Path
 import xarray as xr
 import pandas as pd
 import numpy as np
-from pathlib import Path
 
-DATA_DIR  = Path(__file__).parents[3] / "data"
-RAW_DIR   = DATA_DIR / "raw"
-PROC_DIR  = DATA_DIR / "processed"
+# ---------- 路徑 ----------
+RAW_DIR   = Path(__file__).resolve().parents[2] / 'data' / 'raw'
+PROC_DIR  = Path(__file__).resolve().parents[2] / 'data' / 'processed'
 PROC_DIR.mkdir(parents=True, exist_ok=True)
 
-# ---------- 工具 ----------
-def load_cmip6(nc_path: Path) -> xr.Dataset:
-    """強制載入記憶體，不再用 dask"""
-    ds = xr.open_dataset(nc_path)
-    return ds.load()               # 脫離 dask
+# ---------- 參數（可調） ----------
+TARGET_LAT =  25.0          # 台中附近
+TARGET_LON = 121.0          # 台中附近
+DIST_DEG   =   2.0          # ±2° 矩形裁剪
+TIME_SLICE = '2015-01-01','2015-04-01'  # 只取前 3 個月（90 天）
 
-def rolling_sum_numpy(arr: np.ndarray, window: int) -> np.ndarray:
-    """純 numpy 滾動和，邊界補 np.nan"""
-    return np.convolve(arr, np.ones(window), mode='same')
+# ---------- 工具函式 ----------
+def load_cmip6(nc_path):
+    """強制 chunks 避免 OOM，印維度方便 debug"""
+    print(f'[load] {nc_path.name}')
+    ds = xr.open_dataset(nc_path, chunks={'time': 30})
+    print(f'[load] 原始維度 {ds.dims}')
+    return ds
 
-# ---------- 指標 ----------
-def calculate_spi(pr: pd.Series, scale: int = 3) -> pd.Series:
-    """3 個月累積降水 proxy-SPI"""
-    roll = rolling_sum_numpy(pr.values, scale)
-    spi  = (roll - np.nanmean(roll)) / np.nanstd(roll)
-    return pd.Series(spi, index=pr.index, name=f'spi_{scale}month')
+def clip_region(ds, lat0, lon0, dist_deg):
+    """矩形裁剪 + 印結果筆數"""
+    lat_min, lat_max = lat0-dist_deg, lat0+dist_deg
+    lon_min, lon_max = lon0-dist_deg, lon0+dist_deg
+    out = ds.sel(lat=slice(lat_min, lat_max),
+                 lon=slice(lon_min, lon_max))
+    print(f'[clip] 裁剪後 {out.dims}')
+    return out
 
-def calculate_temp_anomaly(tas: pd.Series) -> pd.Series:
-    """氣溫異常（相對於氣候平均）"""
-    clim = tas.groupby(tas.index.dayofyear).mean()
-    anomaly = tas.groupby(tas.index.dayofyear).transform(lambda x: x - clim)
-    return anomaly.rename('tasmax_anomaly')
+def daily_agg(ds, var):
+    """日平均（若已是日均值就回傳原值）"""
+    if 'time' in ds[var].coords:
+        agg = ds[var].resample(time='1D').mean()
+    else:
+        agg = ds[var]
+    print(f'[agg ] {var} 日筆數 {len(agg.time)}')
+    return agg
 
-def calculate_gdd(tas: pd.Series, base: float = 10.0) -> pd.Series:
-    """生長度日 GDD = max(0, Tmax - base)"""
-    gdd = (tas - base).clip(lower=0)
-    return gdd.rename('gdd')
-
-def calculate_heat_wave_days(tas: pd.Series, threshold: float = 35.0) -> pd.Series:
-    """熱浪天數 proxy：Tmax > 35 °C"""
-    hot = (tas > threshold).astype(int)
-    return hot.rename('heat_wave_days')
+def to_feature_table(daily_ds, vars=['tasmax', 'pr']):
+    """把 3D (time,lat,lon) 拉平成 2D DataFrame"""
+    df = daily_ds[vars].to_dataframe().reset_index()  # 展平
+    print(f'[table] 總列數 {len(df)}')
+    return df
 
 # ---------- 主流程 ----------
 def main():
-    print('[CP] 載入 CMIP6 資料 …')
+    print('[main] 1. 載入 NetCDF')
     tasmax_ds = load_cmip6(RAW_DIR / 'cmip6_tasmax.nc')
-    precip_ds = load_cmip6(RAW_DIR / 'cmip6_pr.nc')
+    pr_ds     = load_cmip6(RAW_DIR / 'cmip6_pr.nc')
 
-    # 轉 pandas Series（索引=時間）
-    tas = tasmax_ds['tasmax'].to_pandas().squeeze()
-    pr  = precip_ds['pr'].to_pandas().squeeze()
+    print('[main] 2. 時間裁剪')
+    tasmax_ds = tasmax_ds.sel(time=slice(*TIME_SLICE))
+    pr_ds     = pr_ds.sel(time=slice(*TIME_SLICE))
 
-    print('[CP] 計算指標 …')
-    indicators = pd.DataFrame({
-        'spi_3month'     : calculate_spi(pr, scale=3),
-        'tasmax_anomaly' : calculate_temp_anomaly(tas),
-        'gdd'            : calculate_gdd(tas),
-        'heat_wave_days' : calculate_heat_wave_days(tas),
-        'cum_pr'         : pr.rename('cum_pr'),
-    })
-    indicators['date'] = tas.index
+    print('[main] 3. 空間裁剪')
+    tasmax_ds = clip_region(tasmax_ds, TARGET_LAT, TARGET_LON, DIST_DEG)
+    pr_ds     = clip_region(pr_ds,     TARGET_LAT, TARGET_LON, DIST_DEG)
 
-    out_path = PROC_DIR / 'cmip6_features.csv'
-    indicators.to_csv(out_path, index=False)
-    print(f'[CP] 氣象特徵已寫入 {out_path}')
+    print('[main] 4. 日平均（若需要）')
+    tasmax_day = daily_agg(tasmax_ds, 'tasmax')
+    pr_day     = daily_agg(pr_ds,     'pr')
 
+    print('[main] 5. 合併 & 拉平成 DataFrame')
+    daily_ds   = xr.merge([tasmax_day, pr_day])
+    df_feat    = to_feature_table(daily_ds)
+
+    print('[main] 6. 寫 CSV')
+    out_file = PROC_DIR / 'cmip6_features.csv'
+    df_feat.to_csv(out_file, index=False)
+    print(f'[main] 特徵已寫出 -> {out_file}  列數={len(df_feat)}')
+
+# ---------- 可被 import 也直接執行 ----------
 if __name__ == '__main__':
     main()
