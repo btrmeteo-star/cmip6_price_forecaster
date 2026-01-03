@@ -1,4 +1,4 @@
-name: MLflow Pipeline
+name: MLflow Pipeline (Zero-Codespaces)
 
 on:
   push:
@@ -7,11 +7,7 @@ on:
 
 jobs:
   pipeline:
-    runs-on: ubuntu-latest
-    # 使用 GitHub 官方 Codespaces 容器（4-core，8 GB）
-    container:
-      image: mcr.microsoft.com/devcontainers/python:3.12
-
+    runs-on: ubuntu-latest    # 免费 GitHub-hosted runner
     steps:
       # ---------- 1. 检出代码 ----------
       - name: Checkout
@@ -24,19 +20,15 @@ jobs:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
 
-      # ---------- 3. 安装系统依赖 ----------
-      - name: Install system deps
-        run: |
-          apt-get update
-          apt-get install -y wget curl net-tools
-
-      # ---------- 4. 安装 Python 依赖 ----------
+      # ---------- 3. 安装 Python 依赖 ----------
       - name: Install Python packages
         run: |
+          sudo apt-get update
+          sudo apt-get install -y wget curl net-tools
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ---------- 5. 生成气象特征（三商品） ----------
+      # ---------- 4. 生成气象特征（三商品） ----------
       - name: Generate features (rice/corn/barley)
         run: |
           for crop in rice corn barley; do
@@ -46,7 +38,7 @@ jobs:
             COMMODITY=$crop python train.py
           done
 
-      # ---------- 6. 启动 MLflow UI 并等待端口就绪 ----------
+      # ---------- 5. 启动 MLflow UI 并等待端口就绪 ----------
       - name: Start MLflow UI & wait port
         run: |
           nohup mlflow ui --host 0.0.0.0 --port 8000 > mlflow.log 2>&1 &
@@ -59,14 +51,13 @@ jobs:
             echo "⏳ 第 $i/60 秒重试..."
             sleep 1
           done
-          # 如果 60 秒仍失败，打印日志
           if ! curl -f http://localhost:8000 > /dev/null 2>&1; then
             echo "❌ 无法连接，查看日志："
             cat mlflow.log
             exit 1
           fi
 
-      # ---------- 7. 输出本次最佳模型信息 ----------
+      # ---------- 6. 输出本次最佳模型信息 ----------
       - name: Print best models
         run: |
           echo "=== 本次最佳模型 ==="
@@ -75,9 +66,11 @@ jobs:
             echo "${crop}-price-model  R²=${r2}"
           done
 
-      # ---------- 8.  artifacts（可选，把模型 artifact 留下） ----------
+      # ---------- 7. 上传 artifact（可选，保留模型与日志） ----------
       - name: Upload MLflow artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mlflow-artifacts
-          path: mlruns/
+          path: |
+            mlruns/
+            mlflow.log
