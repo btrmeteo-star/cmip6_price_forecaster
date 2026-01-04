@@ -1,0 +1,14 @@
+artifact_uri: file:///workspaces/cmip6_price_forecaster/mlruns/847380373724513837/11b7ef6591cb4a3eaad5d9dc6b3d4ac3/artifacts
+end_time: 1766498963425
+entry_point_name: ''
+experiment_id: '847380373724513837'
+lifecycle_stage: active
+run_id: 11b7ef6591cb4a3eaad5d9dc6b3d4ac3
+run_name: receptive-frog-617
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1766498963415
+status: 3
+tags: []
+user_id: codespace

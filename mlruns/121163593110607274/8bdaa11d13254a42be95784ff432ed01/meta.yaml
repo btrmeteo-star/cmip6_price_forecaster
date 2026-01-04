@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/8bdaa11d13254a42be95784ff432ed01/artifacts
+deleted_time: 1767455922563
+end_time: 1767431132195
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: deleted
+run_id: 8bdaa11d13254a42be95784ff432ed01
+run_name: barley-linear_regression
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767431129218
+status: 3
+tags: []
+user_id: codespace

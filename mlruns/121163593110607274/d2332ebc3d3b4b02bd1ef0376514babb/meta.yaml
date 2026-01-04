@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/d2332ebc3d3b4b02bd1ef0376514babb/artifacts
+deleted_time: 1767455844658
+end_time: 1767433302882
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: deleted
+run_id: d2332ebc3d3b4b02bd1ef0376514babb
+run_name: corn-xgboost
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767433299530
+status: 3
+tags: []
+user_id: codespace

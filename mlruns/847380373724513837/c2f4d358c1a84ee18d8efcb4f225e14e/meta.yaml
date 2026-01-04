@@ -1,0 +1,14 @@
+artifact_uri: file:///workspaces/cmip6_price_forecaster/mlruns/847380373724513837/c2f4d358c1a84ee18d8efcb4f225e14e/artifacts
+end_time: 1766761992578
+entry_point_name: ''
+experiment_id: '847380373724513837'
+lifecycle_stage: active
+run_id: c2f4d358c1a84ee18d8efcb4f225e14e
+run_name: adaptable-grub-926
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1766761992560
+status: 3
+tags: []
+user_id: codespace

@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/e740b77c51844b4dbb83bd25d76be530/artifacts
+deleted_time: 1767455832855
+end_time: 1767433345075
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: deleted
+run_id: e740b77c51844b4dbb83bd25d76be530
+run_name: barley-random_forest
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767433341025
+status: 3
+tags: []
+user_id: codespace

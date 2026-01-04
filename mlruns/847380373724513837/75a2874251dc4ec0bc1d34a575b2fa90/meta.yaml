@@ -1,0 +1,14 @@
+artifact_uri: file:///workspaces/cmip6_price_forecaster/mlruns/847380373724513837/75a2874251dc4ec0bc1d34a575b2fa90/artifacts
+end_time: 1766819695944
+entry_point_name: ''
+experiment_id: '847380373724513837'
+lifecycle_stage: active
+run_id: 75a2874251dc4ec0bc1d34a575b2fa90
+run_name: wise-crow-481
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1766819695927
+status: 3
+tags: []
+user_id: codespace

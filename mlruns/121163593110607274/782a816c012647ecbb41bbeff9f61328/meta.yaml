@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/782a816c012647ecbb41bbeff9f61328/artifacts
+deleted_time: 1767455844622
+end_time: 1767433327146
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: deleted
+run_id: 782a816c012647ecbb41bbeff9f61328
+run_name: rice-xgboost
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767433324238
+status: 3
+tags: []
+user_id: codespace

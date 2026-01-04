@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/84c668ccfa87458fa05b71f8fecbedb4/artifacts
+deleted_time: 1767455873513
+end_time: 1767433022382
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: deleted
+run_id: 84c668ccfa87458fa05b71f8fecbedb4
+run_name: corn-linear_regression
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767433019642
+status: 3
+tags: []
+user_id: codespace

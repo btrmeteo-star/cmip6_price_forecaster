@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/bd8e2c9f109649d48165f710d9ad670b/artifacts
+end_time: 1767455723740
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: active
+run_id: bd8e2c9f109649d48165f710d9ad670b
+run_name: rice-random_forest
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767455719438
+status: 3
+tags: []
+user_id: codespace

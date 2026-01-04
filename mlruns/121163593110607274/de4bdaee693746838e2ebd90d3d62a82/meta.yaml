@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/de4bdaee693746838e2ebd90d3d62a82/artifacts
+deleted_time: 1767455922591
+end_time: 1767431113777
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: deleted
+run_id: de4bdaee693746838e2ebd90d3d62a82
+run_name: rice-linear_regression
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767431108672
+status: 3
+tags: []
+user_id: codespace

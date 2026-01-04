@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/e15857dedd074b79aa0f3e0d1570746a/artifacts
+deleted_time: 1767455873499
+end_time: 1767433040754
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: deleted
+run_id: e15857dedd074b79aa0f3e0d1570746a
+run_name: barley-xgboost
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767433037218
+status: 3
+tags: []
+user_id: codespace

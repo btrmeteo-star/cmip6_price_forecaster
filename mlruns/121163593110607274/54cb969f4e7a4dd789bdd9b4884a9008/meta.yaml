@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/54cb969f4e7a4dd789bdd9b4884a9008/artifacts
+deleted_time: 1767455859768
+end_time: 1767433289130
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: deleted
+run_id: 54cb969f4e7a4dd789bdd9b4884a9008
+run_name: rice-random_forest
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767433284903
+status: 3
+tags: []
+user_id: codespace

@@ -1,0 +1,14 @@
+artifact_uri: file:///workspaces/cmip6_price_forecaster/mlruns/847380373724513837/d85835c1a58f40a79cee83dc76aa3089/artifacts
+end_time: 1766677225781
+entry_point_name: ''
+experiment_id: '847380373724513837'
+lifecycle_stage: active
+run_id: d85835c1a58f40a79cee83dc76aa3089
+run_name: brawny-asp-57
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1766677225767
+status: 3
+tags: []
+user_id: codespace

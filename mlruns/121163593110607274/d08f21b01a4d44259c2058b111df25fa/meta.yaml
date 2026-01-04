@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/121163593110607274/d08f21b01a4d44259c2058b111df25fa/artifacts
+deleted_time: 1767455909471
+end_time: 1767431182981
+entry_point_name: ''
+experiment_id: '121163593110607274'
+lifecycle_stage: deleted
+run_id: d08f21b01a4d44259c2058b111df25fa
+run_name: corn-random_forest
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767431179741
+status: 3
+tags: []
+user_id: codespace

@@ -1,0 +1,14 @@
+artifact_uri: file:///workspaces/cmip6_price_forecaster/mlruns/847380373724513837/92aa2211c828412dba08b23022a43ce5/artifacts
+end_time: 1766826112702
+entry_point_name: ''
+experiment_id: '847380373724513837'
+lifecycle_stage: active
+run_id: 92aa2211c828412dba08b23022a43ce5
+run_name: tasteful-koi-485
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1766826112687
+status: 3
+tags: []
+user_id: codespace

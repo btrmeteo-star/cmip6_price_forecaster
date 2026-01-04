@@ -1,0 +1,6 @@
+artifact_location: mlflow-artifacts:/121163593110607274
+creation_time: 1767431108475
+experiment_id: '121163593110607274'
+last_update_time: 1767431108475
+lifecycle_stage: active
+name: cmip6-crop-price-prediction

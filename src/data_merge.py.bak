@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+"""
+合并气象特征与价格数据，生成训练集
+输入：
+  - data/processed/{crop}_features.csv
+  - data/raw/{crop}_price.csv
+输出：
+  - data/final/{crop}_dataset.csv
+"""
+from pathlib import Path
+import pandas as pd
+
+RAW_DIR = Path("data/raw")
+PROC_DIR = Path("data/processed")
+FINAL_DIR = Path("data/final")
+FINAL_DIR.mkdir(exist_ok=True)
+
+CROPS = ["rice", "corn", "barley"]
+
+for crop in CROPS:
+    feat_path = PROC_DIR / f"{crop}_features.csv"
+    price_path = RAW_DIR / f"{crop}_price.csv"
+    out_path = FINAL_DIR / f"{crop}_dataset.csv"
+
+    if not feat_path.exists():
+        print(f"⚠️  跳过 {crop}: 特征文件不存在 ({feat_path})")
+        continue
+    if not price_path.exists():
+        # 自动创建模拟价格数据（方便测试）
+        print(f"⚠️  {crop}_price.csv 不存在，生成模拟价格...")
+        dates = pd.date_range('2015-01-01', '22-12-31', freq='D')
+        prices = 100 + np.cumsum(np.random.randn(len(dates)) * 0.1)
+        pd.DataFrame({'date': dates, 'price': prices}).to_csv(price_path, index=False)
+
+    df_feat = pd.read_csv(feat_path, parse_dates=['date'])
+    df_price = pd.read_csv(price_path, parse_dates=['date'])
+
+    # 内连接（只保留共同日期）
+    df = pd.merge(df_feat, df_price, on='date', how='inner')
+    df.to_csv(out_path, index=False)
+    print(f"✅ {crop}: 合并完成 ({len(df)} 行) -> {out_path}")

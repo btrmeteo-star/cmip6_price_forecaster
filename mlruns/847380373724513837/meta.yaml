@@ -1,0 +1,6 @@
+artifact_location: file:///workspaces/cmip6_price_forecaster/mlruns/847380373724513837
+creation_time: 1766498963111
+experiment_id: '847380373724513837'
+last_update_time: 1766498963111
+lifecycle_stage: active
+name: soybean-price-memory
