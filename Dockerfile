@@ -1,20 +1,19 @@
+# 改为 Python 3.11（稳定且支持 sklearn 1.8.0）
 FROM python:3.11-slim
+
 WORKDIR /app
 
-# 系統相依
-RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
+# 安装编译依赖（sklearn 需要 gcc）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# Python 相依
-COPY requirements-api.txt .
-RUN pip install --no-cache-dir -r requirements-api.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 原始碼
-COPY src/ ./src
-COPY dvc.yaml pyproject.toml ./
-# 若映像內找不到模型，則在啟動時自動重訓
-RUN mkdir -p /app/models
+COPY . .
 
-# 入口腳本
-COPY scripts/startup.sh /app/startup.sh
-RUN chmod +x /app/startup.sh
-CMD ["/app/startup.sh"]
+EXPOSE 8080
+
+# 替换原来的 CMD 行
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
