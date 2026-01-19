@@ -1,0 +1,150 @@
+import os
+import random
+import joblib
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any
+from pathlib import Path
+
+# ======================
+# 配置
+# ======================
+MODEL_DIR = "models"
+SUPPORTED_CROPS = ["corn", "wheat", "rice"]  # 可扩展
+
+# ======================
+# Mock 模型（用于兜底）
+# ======================
+class MockModel:
+    def predict(self, X: pd.DataFrame) -> List[float]:
+        return [round(random.uniform(100.0, 300.0), 2) for _ in range(len(X))]
+
+# ======================
+# 模型缓存（避免重复加载）
+# ======================
+model_cache: Dict[str, Any] = {}
+
+def get_model(crop: str):
+    if crop in model_cache:
+        return model_cache[crop]
+
+    model_path = Path(MODEL_DIR) / f"{crop}.joblib"
+    if model_path.exists():
+        try:
+            model = joblib.load(model_path)
+            model_cache[crop] = model
+            print(f"✅ 成功加载模型: {model_path}")
+            return model
+        except Exception as e:
+            print(f"⚠️ 加载模型失败 {model_path}: {e}")
+    
+    # 回退到 Mock
+    print(f"🔄 使用 Mock 模型替代: {crop}")
+    model_cache[crop] = MockModel()
+    return model_cache[crop]
+
+# ======================
+# FastAPI App
+# ======================
+app = FastAPI(
+    title="CMIP6 农产品价格预测 API",
+    description="基于气候与历史价格的多作物价格预测服务",
+    version="1.0.0"
+)
+
+# 前端模板
+templates = Jinja2Templates(directory="templates")
+
+# ======================
+# 数据模型
+# ======================
+FEATURE_COLUMNS = [
+    "pr", "pr_lag1", "pr_lag2", "pr_std",
+    "price_lag1", "price_lag2",
+    "tasmax", "tasmax_lag1", "tasmax_lag2", "tasmax_mean"
+]
+
+class PredictionRequest(BaseModel):
+    crop: str = Field(..., description="作物名称，如 'corn', 'wheat', 'rice'")
+    pr: float = Field(..., description="当前降水量 (mm)")
+    pr_lag1: float = Field(..., description="前1期降水量")
+    pr_lag1: float = Field(..., description="前1期降水量")
+    pr_lag2: float = Field(..., description="前2期降水量")
+    pr_std: float = Field(..., description="降水量标准差")
+    price_lag1: float = Field(..., description="前1期价格")
+    price_lag2: float = Field(..., description="前2期价格")
+    tasmax: float = Field(..., description="当前最高气温 (°C)")
+    tasmax_lag1: float = Field(..., description="前1期最高气温")
+    tasmax_lag2: float = Field(..., description="前2期最高气温")
+    tasmax_mean: float = Field(..., description="最高气温均值")
+
+class BatchPredictionRequest(BaseModel):
+    crop: str = Field(..., description="作物名称（批量样本统一作物）")
+    features_list: List[List[float]] = Field(
+        ...,
+        description=f"特征列表，每个子列表包含 {len(FEATURE_COLUMNS)} 个特征值"
+    )
+
+class PredictionResponse(BaseModel):
+    crop: str
+    predicted_price: float
+    status: str = "success"
+
+# ======================
+# 路由
+# ======================
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.post("/predict", response_model=PredictionResponse)
+async def predict_single(request: PredictionRequest):
+    if request.crop not in SUPPORTED_CROPS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的作物: {request.crop}。支持: {SUPPORTED_CROPS}"
+        )
+    
+    try:
+        model = get_model(request.crop)
+        features = [[
+            request.pr, request.pr_lag1, request.pr_lag2, request.pr_std,
+            request.price_lag1, request.price_lag2,
+            request.tasmax, request.tasmax_lag1, request.tasmax_lag2, request.tasmax_mean
+        ]]
+        df = pd.DataFrame(features, columns=FEATURE_COLUMNS)
+        pred = model.predict(df)[0]
+        return PredictionResponse(crop=request.crop, predicted_price=float(pred))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"预测失败: {str(e)}")
+
+@app.post("/predict/batch", response_model=List[PredictionResponse])
+async def predict_batch(request: BatchPredictionRequest):
+    if request.crop not in SUPPORTED_CROPS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的作物: {request.crop}。支持: {SUPPORTED_CROPS}"
+        )
+    
+    try:
+        model = get_model(request.crop)
+        df = pd.DataFrame(request.features_list, columns=FEATURE_COLUMNS)
+        predictions = model.predict(df)
+        return [
+            PredictionResponse(
+                crop=request.crop,
+                predicted_price=float(pred),
+                status="success"
+            )
+            for pred in predictions
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"批量预测失败: {str(e)}")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "model_cache": list(model_cache.keys())}

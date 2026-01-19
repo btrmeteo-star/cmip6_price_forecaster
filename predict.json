@@ -1,0 +1,15 @@
+{
+  "crop": "rice",
+  "features": {
+    "tasmax": 32.1,
+    "pr": 4.5,
+    "price_lag1": 260.0,
+    "tasmax_lag1": 31.8,
+    "pr_lag1": 4.2,
+    "price_lag2": 258.5,
+    "tasmax_lag2": 32.0,
+    "pr_lag2": 4.7,
+    "tasmax_mean": 32.0,
+    "pr_std": 0.25
+  }
+}

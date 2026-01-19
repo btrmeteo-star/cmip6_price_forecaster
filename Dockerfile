@@ -1,19 +1,22 @@
-# 改为 Python 3.11（稳定且支持 sklearn 1.8.0）
-FROM python:3.11-slim
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
 
+# Set the working directory in the container to /app
 WORKDIR /app
 
-# 安装编译依赖（sklearn 需要 gcc）
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# Add the current directory contents into the container at /app
+ADD . /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install uvicorn[standard]
 
-COPY . .
-
+# Make port 8080 available to the world outside this container
 EXPOSE 8080
 
-# 替换原来的 CMD 行
+# Define environment variable
+ENV NAME World
+
+# Run app.py when the container launches
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

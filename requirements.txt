@@ -1,6 +1,23 @@
+# Web 框架与服务器
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
+
+# 数据处理
 pandas==2.2.0
-scikit-learn==1.8.0
+numpy==1.26.4
+
+# 机器学习
+scikit-learn==1.4.0
 joblib==1.3.2
+
+# PDF 报告生成（关键！）
+fpdf2==2.7.5
+
+# 模板渲染
+jinja2==3.1.4
+
+# 表单解析（用于文件上传等）
 python-multipart==0.0.9
+
+# 可选：如果你使用 Pydantic v2（FastAPI 0.100+ 默认）
+pydantic==2.9.2

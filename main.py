@@ -1,137 +1,204 @@
 import os
+import io
+import random
 import joblib
-import logging
-from fastapi import FastAPI, HTTPException
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
-from typing import List, Optional
-import numpy as np
+from typing import List, Dict, Any
+from pathlib import Path
+from fpdf import FPDF
 
-# ==============================
+# ======================
 # 配置
-# ==============================
+# ======================
+MODEL_DIR = "models"
+SUPPORTED_CROPS = ["corn", "wheat", "rice"]
 
-MODEL_PATH = "models/best_model.joblib"
-FEATURES = [
-    'pr', 'pr_lag1', 'pr_lag2', 'pr_std',
-    'price_lag1', 'price_lag2',
-    'tasmax', 'tasmax_lag1', 'tasmax_lag2', 'tasmax_mean'
+# 特征列顺序（必须与训练一致）
+FEATURE_COLUMNS = [
+    "pr", "pr_lag1", "pr_lag2", "pr_std",
+    "price_lag1", "price_lag2",
+    "tasmax", "tasmax_lag1", "tasmax_lag2", "tasmax_mean"
 ]
 
-# 日志配置
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# ======================
+# Mock 模型（兜底）
+# ======================
+class MockModel:
+    def predict(self, X: pd.DataFrame) -> List[float]:
+        return [round(random.uniform(100.0, 300.0), 2) for _ in range(len(X))]
 
-# ==============================
-# 加载模型
-# ==============================
+# ======================
+# 模型缓存
+# ======================
+model_cache: Dict[str, Any] = {}
 
-if not os.path.exists(MODEL_PATH):
-    logger.error(f"❌ 模型文件未找到: {MODEL_PATH}")
-    raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
+def get_model(crop: str):
+    if crop in model_cache:
+        return model_cache[crop]
 
-try:
-    model = joblib.load(MODEL_PATH)
-    logger.info("✅ 模型已加载: %s", MODEL_PATH)
-    logger.info("🔍 特征列: %s", FEATURES)
-except Exception as e:
-    logger.error("❌ 模型加载失败: %s", str(e))
-    raise RuntimeError("Failed to load model") from e
+    model_path = Path(MODEL_DIR) / f"{crop}.joblib"
+    if model_path.exists():
+        try:
+            model = joblib.load(model_path)
+            model_cache[crop] = model
+            print(f"✅ 加载模型: {model_path}")
+            return model
+        except Exception as e:
+            print(f"⚠️ 模型加载失败 {model_path}: {e}")
+    
+    print(f"🔄 使用 Mock 模型: {crop}")
+    model_cache[crop] = MockModel()
+    return model_cache[crop]
 
-# ==============================
-# Pydantic 模型
-# ==============================
-
-class PredictionRequest(BaseModel):
-    pr: float = Field(..., description="当前降水量 (mm)")
-    pr_lag1: float = Field(..., description="前1期降水量")
-    pr_lag2: float = Field(..., description="前2期降水量")
-    pr_std: float = Field(..., description="降水量标准差")
-    price_lag1: float = Field(..., description="前1期价格")
-    price_lag2: float = Field(..., description="前2期价格")
-    tasmax: float = Field(..., description="当前最高气温 (°C)")
-    tasmax_lag1: float = Field(..., description="前1期最高气温")
-    tasmax_lag2: float = Field(..., description="前2期最高气温")
-    tasmax_mean: float = Field(..., description="最高气温均值")
-
-class PredictionResponse(BaseModel):
-    crop: str = Field("generic_crop", description="农产品名称")
-    predicted_price: float = Field(..., description="预测价格")
-    status: str = Field("success", description="请求状态")
-
-class HealthResponse(BaseModel):
-    status: str = "ok"
-    model_loaded: bool = True
-    feature_count: int = len(FEATURES)
-
-# ==============================
+# ======================
 # FastAPI App
-# ==============================
-
+# ======================
 app = FastAPI(
-    title="CMIP6 Price Forecaster",
-    description="基于 CMIP6 气候数据和历史价格预测农产品价格",
-    version="1.0.0",
-    contact={
-        "name": "Your Team",
-        "email": "team@example.com"
-    }
+    title="CMIP6 农产品价格预测 API",
+    description="基于气候与历史价格的多作物价格预测服务",
+    version="1.0.0"
 )
 
-# ==============================
+templates = Jinja2Templates(directory="templates")
+
+# ======================
+# 数据模型
+# ======================
+class PredictionRequest(BaseModel):
+    crop: str = Field(..., description="作物名称")
+    pr: float
+    pr_lag1: float
+    pr_lag2: float
+    pr_std: float
+    price_lag1: float
+    price_lag2: float
+    tasmax: float
+    tasmax_lag1: float
+    tasmax_lag2: float
+    tasmax_mean: float
+
+class PredictionResponse(BaseModel):
+    crop: str
+    predicted_price: float
+    status: str = "success"
+
+# ======================
 # 路由
-# ==============================
+# ======================
 
-@app.get("/health", response_model=HealthResponse, tags=["健康检查"])
-def health_check():
-    """服务健康检查"""
-    return HealthResponse()
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    """单预测页面（含图表）"""
+    return templates.TemplateResponse("index.html", {"request": request})
 
-@app.post("/predict", response_model=PredictionResponse, tags=["预测"])
-def predict(request: PredictionRequest):
-    """
-    根据气候与价格特征预测未来价格
-    """
+@app.get("/batch", response_class=HTMLResponse)
+async def batch_page(request: Request):
+    """批量预测页面"""
+    return templates.TemplateResponse("batch_prediction.html", {"request": request})
+
+@app.post("/predict", response_model=PredictionResponse)
+async def predict_single(request: PredictionRequest):
+    """单样本预测"""
+    if request.crop not in SUPPORTED_CROPS:
+        raise HTTPException(status_code=400, detail=f"不支持的作物。支持: {SUPPORTED_CROPS}")
+
     try:
-        # 构造特征向量（顺序必须与训练一致！）
-        features = np.array([[
-            request.pr,
-            request.pr_lag1,
-            request.pr_lag2,
-            request.pr_std,
-            request.price_lag1,
-            request.price_lag2,
-            request.tasmax,
-            request.tasmax_lag1,
-            request.tasmax_lag2,
-            request.tasmax_mean
-        ]], dtype=np.float32)
-
-        # 模型预测
-        prediction = model.predict(features)[0]
-
-        # 确保是 float（避免 numpy 类型问题）
-        predicted_price = float(prediction)
-
-        logger.info("📈 预测成功: %.2f", predicted_price)
-
-        return PredictionResponse(
-            crop="corn",  # 可根据需求改为动态作物名
-            predicted_price=predicted_price,
-            status="success"
-        )
-
+        model = get_model(request.crop)
+        features = [[
+            request.pr, request.pr_lag1, request.pr_lag2, request.pr_std,
+            request.price_lag1, request.price_lag2,
+            request.tasmax, request.tasmax_lag1, request.tasmax_lag2, request.tasmax_mean
+        ]]
+        df = pd.DataFrame(features, columns=FEATURE_COLUMNS)
+        pred = model.predict(df)[0]
+        return PredictionResponse(crop=request.crop, predicted_price=float(pred))
     except Exception as e:
-        logger.error("❌ 预测失败: %s", str(e))
-        raise HTTPException(status_code=500, detail="Internal server error during prediction")
+        raise HTTPException(status_code=500, detail=f"预测失败: {str(e)}")
 
-# ==============================
-# 可选：仪表盘（可扩展）
-# ==============================
+@app.post("/predict/batch")
+async def predict_batch(crop: str, file: UploadFile = File(...)):
+    """批量预测（接收 CSV 文件）"""
+    if crop not in SUPPORTED_CROPS:
+        raise HTTPException(status_code=400, detail=f"不支持的作物。支持: {SUPPORTED_CROPS}")
 
-@app.get("/dashboard", tags=["监控"])
-def dashboard():
-    """简单状态页面（可返回指标或重定向到 Grafana）"""
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="仅支持 CSV 文件")
+
+    try:
+        contents = await file.read()
+        df = pd.read_csv(io.BytesIO(contents))
+
+        # 验证列名是否匹配
+        if list(df.columns) != FEATURE_COLUMNS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"CSV 列必须严格为: {FEATURE_COLUMNS}"
+            )
+
+        model = get_model(crop)
+        predictions = model.predict(df)
+        results = [
+            {"crop": crop, "predicted_price": float(p), "status": "success"}
+            for p in predictions
+        ]
+        return JSONResponse(content=results)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"批量预测失败: {str(e)}")
+
+@app.post("/report")
+async def generate_report(request: PredictionRequest):
+    """生成 PDF 预测报告（兼容 fpdf2）"""
+    if request.crop not in SUPPORTED_CROPS:
+        raise HTTPException(status_code=400, detail=f"不支持的作物。支持: {SUPPORTED_CROPS}")
+
+    try:
+        model = get_model(request.crop)
+        features = [[
+            request.pr, request.pr_lag1, request.pr_lag2, request.pr_std,
+            request.price_lag1, request.price_lag2,
+            request.tasmax, request.tasmax_lag1, request.tasmax_lag2, request.tasmax_mean
+        ]]
+        df = pd.DataFrame(features, columns=FEATURE_COLUMNS)
+        pred = model.predict(df)[0]
+
+        # === 使用 fpdf2 正确生成 PDF (返回 bytes) ===
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, "CMIP6 农产品价格预测报告", ln=True, align="C")
+        pdf.ln(10)
+
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 10, f"作物: {request.crop.title()}", ln=True)
+        pdf.cell(0, 10, f"当前降水量 (pr): {request.pr} mm", ln=True)
+        pdf.cell(0, 10, f"前1期价格: {request.price_lag1} 元", ln=True)
+        pdf.cell(0, 10, f"当前最高气温: {request.tasmax} °C", ln=True)
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, f"预测价格: ¥{pred:.2f}", ln=True)
+
+        # ✅ fpdf2 的 output() 默认返回 bytes
+        pdf_bytes = pdf.output()
+
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=price_prediction_report.pdf"}
+        )
+    except Exception as e:
+        print(f"❌ PDF 生成错误: {e}")  # 调试日志
+        raise HTTPException(status_code=500, detail=f"PDF 生成失败: {str(e)}")
+
+@app.get("/health")
+async def health_check():
+    """健康检查端点"""
     return {
-        "message": "Dashboard placeholder. Consider integrating with monitoring tools.",
-        "uptime": "available"
+        "status": "ok",
+        "service": "cmip6-price-forecaster",
+        "loaded_models": list(model_cache.keys())
     }

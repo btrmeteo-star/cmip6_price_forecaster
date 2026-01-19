@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CMIP6 农产品价格预测</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+    h1 { color: #2c3e50; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+    button { margin-top: 20px; padding: 10px 20px; background: #3498db; color: white; border: none; cursor: pointer; }
+    button:hover { background: #2980b9; }
+    #result { margin-top: 20px; padding: 15px; background: #f9f9f9; border-left: 4px solid #3498db; display: none; }
+  </style>
+</head>
+<body>
+  <h1>🌾 CMIP6 农产品价格预测</h1>
+  <p>输入气候和历史价格数据，预测下一周期价格。</p>
+
+  <label for="crop">作物 (Crop)</label>
+  <select id="crop">
+    <option value="rice">水稻 (Rice)</option>
+    <option value="wheat">小麦 (Wheat)</option>
+  </select>
+
+  <!-- 特征输入 -->
+  <label>降水 (pr, mm/day)</label>
+  <input type="number" step="0.1" id="pr" value="4.5">
+
+  <label>前一期降水 (pr_lag1)</label>
+  <input type="number" step="0.1" id="pr_lag1" value="4.2">
+
+  <label>前两期降水 (pr_lag2)</label>
+  <input type="number" step="0.1" id="pr_lag2" value="4.7">
+
+  <label>降水标准差 (pr_std)</label>
+  <input type="number" step="0.01" id="pr_std" value="0.25">
+
+  <label>上期价格 (price_lag1)</label>
+  <input type="number" step="0.1" id="price_lag1" value="260.0">
+
+  <label>上两期价格 (price_lag2)</label>
+  <input type="number" step="0.1" id="price_lag2" value="258.5">
+
+  <label>最高温 (tasmax, °C)</label>
+  <input type="number" step="0.1" id="tasmax" value="32.1">
+
+  <label>前一期最高温 (tasmax_lag1)</label>
+  <input type="number" step="0.1" id="tasmax_lag1" value="31.8">
+
+  <label>前两期最高温 (tasmax_lag2)</label>
+  <input type="number" step="0.1" id="tasmax_lag2" value="32.0">
+
+  <label>最高温均值 (tasmax_mean)</label>
+  <input type="number" step="0.1" id="tasmax_mean" value="32.0">
+
+  <button onclick="predict()">预测价格</button>
+
+  <div id="result"></div>
+
+  <script>
+    // 🔧 替换为你的实际 API 地址（如果是本地开发，用 http://localhost:8080）
+    const API_BASE = "https://verbose-space-waffle-7v6wqw4wxp5hrrw6-8080.app.github.dev";
+
+    async function predict() {
+      const crop = document.getElementById("crop").value;
+      const features = {
+        pr: parseFloat(document.getElementById("pr").value),
+        pr_lag1: parseFloat(document.getElementById("pr_lag1").value),
+        pr_lag2: parseFloat(document.getElementById("pr_lag2").value),
+        pr_std: parseFloat(document.getElementById("pr_std").value),
+        price_lag1: parseFloat(document.getElementById("price_lag1").value),
+        price_lag2: parseFloat(document.getElementById("price_lag2").value),
+        tasmax: parseFloat(document.getElementById("tasmax").value),
+        tasmax_lag1: parseFloat(document.getElementById("tasmax_lag1").value),
+        tasmax_lag2: parseFloat(document.getElementById("tasmax_lag2").value),
+        tasmax_mean: parseFloat(document.getElementById("tasmax_mean").value),
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/predict`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ crop, features })
+        });
+
+        const data = await response.json();
+        const resultDiv = document.getElementById("result");
+        if (response.ok) {
+          resultDiv.innerHTML = `
+            <strong>预测结果</strong><br>
+            作物: ${data.crop}<br>
+            预测价格: <span style="color:#e74c3c;font-weight:bold">${data.predicted_price.toFixed(2)}</span><br>
+            状态: ${data.status}
+          `;
+        } else {
+          resultDiv.innerHTML = `<strong>错误:</strong> ${JSON.stringify(data)}`;
+        }
+        resultDiv.style.display = "block";
+      } catch (error) {
+        document.getElementById("result").innerHTML = `<strong>请求失败:</strong> ${error.message}`;
+        document.getElementById("result").style.display = "block";
+      }
+    }
+  </script>
+</body>
+</html>

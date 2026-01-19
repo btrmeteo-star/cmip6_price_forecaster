@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CMIP6 农产品价格预测</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        .form-section, .chart-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: inline-block;
+            width: 180px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 200px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🌾 CMIP6 农产品价格预测</h1>
+
+    <div class="container">
+        <div class="form-section">
+            <form id="predictionForm">
+                <div class="form-group">
+                    <label for="crop">作物:</label>
+                    <select id="crop" required>
+                        <option value="corn">玉米 (Corn)</option>
+                        <option value="wheat">小麦 (Wheat)</option>
+                        <option value="rice">水稻 (Rice)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="pr">当前降水量 (pr):</label>
+                    <input type="number" step="0.1" id="pr" value="1.2" required />
+                </div>
+                <div class="form-group">
+                    <label for="pr_lag1">前1期降水量:</label>
+                    <input type="number" step="0.1" id="pr_lag1" value="0.8" required />
+                </div>
+                <div class="form-group">
+                    <label for="pr_lag2">前2期降水量:</label>
+                    <input type="number" step="0.1" id="pr_lag2" value="1.0" required />
+                </div>
+                <div class="form-group">
+                    <label for="pr_std">降水量标准差:</label>
+                    <input type="number" step="0.1" id="pr_std" value="0.5" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="price_lag1">前1期价格:</label>
+                    <input type="number" step="0.1" id="price_lag1" value="105.0" required />
+                </div>
+                <div class="form-group">
+                    <label for="price_lag2">前2期价格:</label>
+                    <input type="number" step="0.1" id="price_lag2" value="102.0" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="tasmax">当前最高气温:</label>
+                    <input type="number" step="0.1" id="tasmax" value="26.5" required />
+                </div>
+                <div class="form-group">
+                    <label for="tasmax_lag1">前1期最高气温:</label>
+                    <input type="number" step="0.1" id="tasmax_lag1" value="26.0" required />
+                </div>
+                <div class="form-group">
+                    <label for="tasmax_lag2">前2期最高气温:</label>
+                    <input type="number" step="0.1" id="tasmax_lag2" value="25.8" required />
+                </div>
+                <div class="form-group">
+                    <label for="tasmax_mean">最高气温均值:</label>
+                    <input type="number" step="0.1" id="tasmax_mean" value="26.2" required />
+                </div>
+
+                <button type="submit">预测价格</button>
+            </form>
+
+            <div id="result"></div>
+        </div>
+
+        <div class="chart-section">
+            <h2>预测结果可视化</h2>
+            <div class="chart-container">
+                <canvas id="predictionChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+
+        function renderChart(crop, price) {
+            const ctx = document.getElementById('predictionChart').getContext('2d');
+
+            // 销毁旧图表（避免重叠）
+            if (chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [crop],
+                    datasets: [{
+                        label: '预测价格 (元)',
+                        data: [price],
+                        backgroundColor: 'rgba(52, 152, 219, 0.6)',
+                        borderColor: 'rgba(41, 128, 185, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '价格 (元)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '作物'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `预测价格: ¥${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = {
+                crop: document.getElementById('crop').value,
+                pr: parseFloat(document.getElementById('pr').value),
+                pr_lag1: parseFloat(document.getElementById('pr_lag1').value),
+                pr_lag2: parseFloat(document.getElementById('pr_lag2').value),
+                pr_std: parseFloat(document.getElementById('pr_std').value),
+                price_lag1: parseFloat(document.getElementById('price_lag1').value),
+                price_lag2: parseFloat(document.getElementById('price_lag2').value),
+                tasmax: parseFloat(document.getElementById('tasmax').value),
+                tasmax_lag1: parseFloat(document.getElementById('tasmax_lag1').value),
+                tasmax_lag2: parseFloat(document.getElementById('tasmax_lag2').value),
+                tasmax_mean: parseFloat(document.getElementById('tasmax_mean').value)
+            };
+
+            const resultDiv = document.getElementById('result');
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <strong>预测成功！</strong><br>
+                        作物: ${data.crop}<br>
+                        预测价格: <strong>¥${data.predicted_price.toFixed(2)}</strong>
+                    `;
+                    renderChart(data.crop, data.predicted_price);
+                } else {
+                    throw new Error(data.detail || '未知错误');
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = `<strong>预测失败:</strong> ${error.message}`;
+            }
+
+            resultDiv.style.display = 'block';
+        });
+    </script>
+</body>
+</html>
