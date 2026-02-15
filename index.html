@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CMIP6 農產品價格預測</title>
+  <title>🌽 CMIP6 農產品價格預測系統</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       max-width: 800px;
       margin: 40px auto;
       padding: 20px;
@@ -15,26 +15,38 @@
     h1 {
       text-align: center;
       color: #2c3e50;
+      margin-bottom: 30px;
     }
     .form-group {
       margin-bottom: 15px;
     }
     label {
       display: inline-block;
-      width: 180px;
+      width: 200px;
       font-weight: bold;
+      vertical-align: top;
     }
     input[type="number"] {
-      width: 120px;
-      padding: 5px;
+      width: 150px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
     }
     select, button {
-      padding: 8px 16px;
+      padding: 10px 16px;
       margin-top: 10px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
     }
     #result {
       margin-top: 20px;
-      padding: 10px;
+      padding: 12px;
       border-radius: 4px;
       font-weight: bold;
     }
@@ -48,82 +60,93 @@
 
 <div class="form-group">
   <label for="crop">作物類型:</label>
-  <select id="crop">
+  <select id="crop" onchange="updateForm()">
     <option value="corn">玉米 (Corn)</option>
     <option value="wheat">小麥 (Wheat)</option>
+    <option value="soybean">大豆 (Soybean)</option>
   </select>
 </div>
 
-<div class="form-group">
-  <label for="pr">當前降雨量 (pr):</label>
-  <input type="number" id="pr" step="0.1" value="1.2">
-</div>
-<div class="form-group">
-  <label for="pr_lag1">前一期降雨量 (pr_lag1):</label>
-  <input type="number" id="pr_lag1" step="0.1" value="0.8">
-</div>
-<div class="form-group">
-  <label for="pr_lag2">前兩期降雨量 (pr_lag2):</label>
-  <input type="number" id="pr_lag2" step="0.1" value="1.0">
-</div>
-<div class="form-group">
-  <label for="pr_std">降雨標準差 (pr_std):</label>
-  <input type="number" id="pr_std" step="0.1" value="0.5">
-</div>
-
-<div class="form-group">
-  <label for="price_lag1">前一期價格 (price_lag1):</label>
-  <input type="number" id="price_lag1" step="0.1" value="105.0">
-</div>
-<div class="form-group">
-  <label for="price_lag2">前兩期價格 (price_lag2):</label>
-  <input type="number" id="price_lag2" step="0.1" value="102.0">
-</div>
-
-<div class="form-group">
-  <label for="tasmax">當前最高溫 (tasmax):</label>
-  <input type="number" id="tasmax" step="0.1" value="26.5">
-</div>
-<div class="form-group">
-  <label for="tasmax_lag1">前一期最高溫 (tasmax_lag1):</label>
-  <input type="number" id="tasmax_lag1" step="0.1" value="26.0">
-</div>
-<div class="form-group">
-  <label for="tasmax_lag2">前兩期最高溫 (tasmax_lag2):</label>
-  <input type="number" id="tasmax_lag2" step="0.1" value="25.8">
-</div>
-<div class="form-group">
-  <label for="tasmax_mean">最高溫平均值 (tasmax_mean):</label>
-  <input type="number" id="tasmax_mean" step="0.1" value="26.2">
-</div>
+<!-- 动态表单区域 -->
+<div id="form-fields"></div>
 
 <button onclick="predictPrice()">預測價格</button>
 
 <div id="result"></div>
 
 <script>
+  // 定义每种作物的特征映射（必须与模型训练时一致）
+  const cropFeatures = {
+    corn: [
+      { key: "pr", label: "當前降雨量 (pr):" },
+      { key: "pr_lag1", label: "前一期降雨量 (pr_lag1):" },
+      { key: "pr_lag2", label: "前兩期降雨量 (pr_lag2):" },
+      { key: "pr_std", label: "降雨標準差 (pr_std):" },
+      { key: "price_lag1", label: "前一期價格 (price_lag1):" },
+      { key: "price_lag2", label: "前兩期價格 (price_lag2):" },
+      { key: "tasmax", label: "當前最高溫 (tasmax):" },
+      { key: "tasmax_lag1", label: "前一期最高溫 (tasmax_lag1):" },
+      { key: "tasmax_lag2", label: "前兩期最高溫 (tasmax_lag2):" },
+      { key: "tasmax_mean", label: "最高溫平均值 (tasmax_mean):" }
+    ],
+    wheat: [
+      { key: "pr", label: "當前降雨量 (pr):" },
+      { key: "pr_lag1", label: "前一期降雨量 (pr_lag1):" },
+      { key: "pr_lag2", label: "前兩期降雨量 (pr_lag2):" },
+      { key: "pr_std", label: "降雨標準差 (pr_std):" },
+      { key: "price_lag1", label: "前一期價格 (price_lag1):" },
+      { key: "price_lag2", label: "前兩期價格 (price_lag2):" },
+      { key: "tasmax", label: "當前最高溫 (tasmax):" },
+      { key: "tasmax_lag1", label: "前一期最高溫 (tasmax_lag1):" },
+      { key: "tasmax_lag2", label: "前兩期最高溫 (tasmax_lag2):" },
+      { key: "tasmax_mean", label: "最高溫平均值 (tasmax_mean):" }
+    ],
+    soybean: [
+      { key: "pr", label: "當前降雨量 (pr):" },
+      { key: "pr_lag1", label: "前一期降雨量 (pr_lag1):" },
+      { key: "pr_lag2", label: "前兩期降雨量 (pr_lag2):" },
+      { key: "pr_std", label: "降雨標準差 (pr_std):" },
+      { key: "price_lag1", label: "前一期價格 (price_lag1):" },
+      { key: "price_lag2", label: "前兩期價格 (price_lag2):" },
+      { key: "tasmax", label: "當前最高溫 (tasmax):" },
+      { key: "tasmax_lag1", label: "前一期最高溫 (tasmax_lag1):" },
+      { key: "tasmax_lag2", label: "前兩期最高溫 (tasmax_lag2):" },
+      { key: "tasmax_mean", label: "最高溫平均值 (tasmax_mean):" }
+    ]
+  };
+
+  // 根据选择的作物动态更新表单
+  function updateForm() {
+    const crop = document.getElementById('crop').value;
+    const fieldsDiv = document.getElementById('form-fields');
+    fieldsDiv.innerHTML = '';
+
+    const features = cropFeatures[crop] || [];
+    features.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'form-group';
+      div.innerHTML = `
+        <label for="${item.key}">${item.label}</label>
+        <input type="number" id="${item.key}" step="0.1" value="1.0">
+      `;
+      fieldsDiv.appendChild(div);
+    });
+  }
+
   async function predictPrice() {
     const crop = document.getElementById('crop').value;
-    const data = {
-      pr: parseFloat(document.getElementById('pr').value),
-      pr_lag1: parseFloat(document.getElementById('pr_lag1').value),
-      pr_lag2: parseFloat(document.getElementById('pr_lag2').value),
-      pr_std: parseFloat(document.getElementById('pr_std').value),
-      price_lag1: parseFloat(document.getElementById('price_lag1').value),
-      price_lag2: parseFloat(document.getElementById('price_lag2').value),
-      tasmax: parseFloat(document.getElementById('tasmax').value),
-      tasmax_lag1: parseFloat(document.getElementById('tasmax_lag1').value),
-      tasmax_lag2: parseFloat(document.getElementById('tasmax_lag2').value),
-      tasmax_mean: parseFloat(document.getElementById('tasmax_mean').value)
-    };
+    const data = {};
+    const features = cropFeatures[crop];
 
-    // 驗證輸入
-    for (const key in data) {
-      if (isNaN(data[key])) {
-        showResult(`錯誤：${key} 必須是數字`, false);
+    // 收集所有输入值
+    features.forEach(f => {
+      const val = parseFloat(document.getElementById(f.key).value);
+      if (isNaN(val)) {
+        showResult(`錯誤：${f.key} 必須是數字`, false);
         return;
       }
-    }
+      data[f.key] = val;
+    });
 
     try {
       const response = await fetch(`/predict?crop=${encodeURIComponent(crop)}`, {
@@ -149,6 +172,11 @@
     resultDiv.textContent = message;
     resultDiv.className = isSuccess ? 'success' : 'error';
   }
+
+  // 页面加载完成后初始化
+  window.onload = () => {
+    updateForm();
+  };
 </script>
 
 </body>
