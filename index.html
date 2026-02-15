@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CMIP6 農產品價格預測</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: inline-block;
+      width: 180px;
+      font-weight: bold;
+    }
+    input[type="number"] {
+      width: 120px;
+      padding: 5px;
+    }
+    select, button {
+      padding: 8px 16px;
+      margin-top: 10px;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .success { background-color: #d4edda; color: #155724; }
+    .error { background-color: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+
+<h1>🌽 CMIP6 農產品價格預測系統</h1>
+
+<div class="form-group">
+  <label for="crop">作物類型:</label>
+  <select id="crop">
+    <option value="corn">玉米 (Corn)</option>
+    <option value="wheat">小麥 (Wheat)</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label for="pr">當前降雨量 (pr):</label>
+  <input type="number" id="pr" step="0.1" value="1.2">
+</div>
+<div class="form-group">
+  <label for="pr_lag1">前一期降雨量 (pr_lag1):</label>
+  <input type="number" id="pr_lag1" step="0.1" value="0.8">
+</div>
+<div class="form-group">
+  <label for="pr_lag2">前兩期降雨量 (pr_lag2):</label>
+  <input type="number" id="pr_lag2" step="0.1" value="1.0">
+</div>
+<div class="form-group">
+  <label for="pr_std">降雨標準差 (pr_std):</label>
+  <input type="number" id="pr_std" step="0.1" value="0.5">
+</div>
+
+<div class="form-group">
+  <label for="price_lag1">前一期價格 (price_lag1):</label>
+  <input type="number" id="price_lag1" step="0.1" value="105.0">
+</div>
+<div class="form-group">
+  <label for="price_lag2">前兩期價格 (price_lag2):</label>
+  <input type="number" id="price_lag2" step="0.1" value="102.0">
+</div>
+
+<div class="form-group">
+  <label for="tasmax">當前最高溫 (tasmax):</label>
+  <input type="number" id="tasmax" step="0.1" value="26.5">
+</div>
+<div class="form-group">
+  <label for="tasmax_lag1">前一期最高溫 (tasmax_lag1):</label>
+  <input type="number" id="tasmax_lag1" step="0.1" value="26.0">
+</div>
+<div class="form-group">
+  <label for="tasmax_lag2">前兩期最高溫 (tasmax_lag2):</label>
+  <input type="number" id="tasmax_lag2" step="0.1" value="25.8">
+</div>
+<div class="form-group">
+  <label for="tasmax_mean">最高溫平均值 (tasmax_mean):</label>
+  <input type="number" id="tasmax_mean" step="0.1" value="26.2">
+</div>
+
+<button onclick="predictPrice()">預測價格</button>
+
+<div id="result"></div>
+
+<script>
+  async function predictPrice() {
+    const crop = document.getElementById('crop').value;
+    const data = {
+      pr: parseFloat(document.getElementById('pr').value),
+      pr_lag1: parseFloat(document.getElementById('pr_lag1').value),
+      pr_lag2: parseFloat(document.getElementById('pr_lag2').value),
+      pr_std: parseFloat(document.getElementById('pr_std').value),
+      price_lag1: parseFloat(document.getElementById('price_lag1').value),
+      price_lag2: parseFloat(document.getElementById('price_lag2').value),
+      tasmax: parseFloat(document.getElementById('tasmax').value),
+      tasmax_lag1: parseFloat(document.getElementById('tasmax_lag1').value),
+      tasmax_lag2: parseFloat(document.getElementById('tasmax_lag2').value),
+      tasmax_mean: parseFloat(document.getElementById('tasmax_mean').value)
+    };
+
+    // 驗證輸入
+    for (const key in data) {
+      if (isNaN(data[key])) {
+        showResult(`錯誤：${key} 必須是數字`, false);
+        return;
+      }
+    }
+
+    try {
+      const response = await fetch(`/predict?crop=${encodeURIComponent(crop)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        showResult(`預測成功！預估價格為：${result.predicted_price.toFixed(2)}`, true);
+      } else {
+        showResult(`預測失敗：${result.detail || '未知錯誤'}`, false);
+      }
+    } catch (error) {
+      showResult(`請求失敗：${error.message}`, false);
+    }
+  }
+
+  function showResult(message, isSuccess) {
+    const resultDiv = document.getElementById('result');
+    resultDiv.textContent = message;
+    resultDiv.className = isSuccess ? 'success' : 'error';
+  }
+</script>
+
+</body>
+</html>
