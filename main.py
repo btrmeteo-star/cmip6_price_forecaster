@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CMIP6 农产品价格预测 API - 增强版
+CMIP6 农产品价格预测 API - 增强版 v2.0
 支持：预测、历史图表、气候可视化、模型解释、批量预测
 """
 
@@ -13,6 +13,7 @@ from typing import Dict, Any, List
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import joblib
 import pandas as pd
@@ -31,13 +32,23 @@ app = FastAPI(
     version="2.0.0"
 )
 
+# 添加 CORS 中间件（允许跨域请求）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # 配置路径
 MODEL_DIR = "models"
 DATA_DIR = "data"
 os.makedirs(MODEL_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Pydantic 模型
+# ==================== Pydantic 模型 ====================
+
 class PredictionRequest(BaseModel):
     data: Dict[str, float]
 
@@ -110,16 +121,21 @@ async def predict(crop: str = "corn", request: PredictionRequest = None):
 async def get_historical_price(crop: str = "corn", periods: int = 12):
     """获取历史价格数据（用于图表）"""
     try:
+        # ✅ 关键修复：确保 periods 是整数
+        periods = int(periods)
+        
         data_path = DATA_DIR / f"{crop}.csv"
         
         if data_path.exists():
-            # 从真实数据读取
             df = pd.read_csv(data_path)
             if 'price' in df.columns:
                 prices = df['price'].tail(periods).tolist()
                 dates = [(datetime.now() - timedelta(days=i*30)).strftime('%Y-%m') 
                         for i in range(periods-1, -1, -1)]
-                return {"dates": dates, "prices": prices}
+                return {
+                    "dates": dates, 
+                    "prices": [float(p) for p in prices]
+                }
         
         # 生成模拟数据（如果没有真实数据）
         np.random.seed(42)
@@ -128,15 +144,22 @@ async def get_historical_price(crop: str = "corn", periods: int = 12):
         dates = [(datetime.now() - timedelta(days=i*30)).strftime('%Y-%m') 
                 for i in range(periods-1, -1, -1)]
         
-        return {"dates": dates, "prices": [round(p, 2) for p in prices]}
+        return {
+            "dates": dates, 
+            "prices": [round(float(p), 2) for p in prices]
+        }
     
     except Exception as e:
+        logger.error(f"获取历史价格失败：{e}")
         raise HTTPException(status_code=500, detail=f"获取历史数据失败：{str(e)}")
 
 @app.get("/api/historical-price-chart")
 async def get_historical_price_chart(crop: str = "corn", periods: int = 12):
     """获取历史价格图表（Base64 图片）"""
     try:
+        # ✅ 关键修复：确保 periods 是整数
+        periods = int(periods)
+        
         data = await get_historical_price(crop, periods)
         
         plt.figure(figsize=(10, 5))
@@ -159,6 +182,7 @@ async def get_historical_price_chart(crop: str = "corn", periods: int = 12):
         return {"chart": f"data:image/png;base64,{img_base64}"}
     
     except Exception as e:
+        logger.error(f"生成历史价格图表失败：{e}")
         raise HTTPException(status_code=500, detail=f"生成图表失败：{str(e)}")
 
 # ==================== 🌡️ 气候数据可视化 ====================
@@ -167,6 +191,9 @@ async def get_historical_price_chart(crop: str = "corn", periods: int = 12):
 async def get_climate_data(crop: str = "corn", periods: int = 12):
     """获取气候数据（降雨和温度）"""
     try:
+        # ✅ 关键修复：确保 periods 是整数
+        periods = int(periods)
+        
         data_path = DATA_DIR / f"{crop}.csv"
         
         if data_path.exists():
@@ -178,8 +205,8 @@ async def get_climate_data(crop: str = "corn", periods: int = 12):
                         for i in range(periods-1, -1, -1)]
                 return {
                     "dates": dates,
-                    "precipitation": [round(p, 2) for p in pr_data],
-                    "temperature": [round(t, 2) for t in tasmax_data]
+                    "precipitation": [float(p) for p in pr_data],
+                    "temperature": [float(t) for t in tasmax_data]
                 }
         
         # 生成模拟数据
@@ -189,17 +216,21 @@ async def get_climate_data(crop: str = "corn", periods: int = 12):
         
         return {
             "dates": periods_list,
-            "precipitation": [round(np.random.uniform(0.5, 2.5), 2) for _ in range(periods)],
-            "temperature": [round(np.random.uniform(22, 32), 2) for _ in range(periods)]
+            "precipitation": [round(float(np.random.uniform(0.5, 2.5)), 2) for _ in range(periods)],
+            "temperature": [round(float(np.random.uniform(22, 32)), 2) for _ in range(periods)]
         }
     
     except Exception as e:
+        logger.error(f"获取气候数据失败：{e}")
         raise HTTPException(status_code=500, detail=f"获取气候数据失败：{str(e)}")
 
 @app.get("/api/climate-chart")
 async def get_climate_chart(crop: str = "corn", periods: int = 12):
     """获取气候数据图表（Base64 图片）"""
     try:
+        # ✅ 关键修复：确保 periods 是整数
+        periods = int(periods)
+        
         data = await get_climate_data(crop, periods)
         
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
@@ -231,6 +262,7 @@ async def get_climate_chart(crop: str = "corn", periods: int = 12):
         return {"chart": f"data:image/png;base64,{img_base64}"}
     
     except Exception as e:
+        logger.error(f"生成气候图表失败：{e}")
         raise HTTPException(status_code=500, detail=f"生成气候图表失败：{str(e)}")
 
 # ==================== 📊 模型解释 ====================
@@ -261,6 +293,7 @@ async def get_feature_importance(crop: str = "corn"):
         return {"feature_importance": sorted_importance}
     
     except Exception as e:
+        logger.error(f"获取特征重要性失败：{e}")
         raise HTTPException(status_code=500, detail=f"获取特征重要性失败：{str(e)}")
 
 @app.get("/api/feature-importance-chart")
@@ -312,6 +345,7 @@ async def get_feature_importance_chart(crop: str = "corn"):
         return {"chart": f"data:image/png;base64,{img_base64}"}
     
     except Exception as e:
+        logger.error(f"生成特征重要性图表失败：{e}")
         raise HTTPException(status_code=500, detail=f"生成特征重要性图表失败：{str(e)}")
 
 # ==================== 📥 批量预测 ====================
@@ -378,3 +412,9 @@ async def get_supported_crops():
     """获取支持的作物列表"""
     crops = [f.stem for f in Path(MODEL_DIR).glob("*.joblib")]
     return {"crops": crops}
+
+# ==================== 启动日志 ====================
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8081)
