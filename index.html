@@ -4,72 +4,163 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🌽 CMIP6 農產品價格預測系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* 保持你喜欢的样式，这里简化展示 */
-    body { font-family: sans-serif; background: #f0f2f5; padding: 2rem; }
-    .container { max-width: 600px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    h1 { text-align: center; color: #333; }
+    body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+    .tab-btn { padding: 0.75rem 1.5rem; border: none; background: rgba(255,255,255,0.2); color: white; cursor: pointer; border-radius: 8px 8px 0 0; font-weight: 600; transition: all 0.3s; }
+    .tab-btn.active { background: white; color: #667eea; }
+    .tab-content { display: none; background: white; border-radius: 0 12px 12px 12px; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .tab-content.active { display: block; }
     .form-group { margin-bottom: 1rem; }
-    label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
-    input, select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-    button { width: 100%; padding: 0.75rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
-    button:hover { background: #0056b3; }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    .result { margin-top: 1rem; padding: 1rem; border-radius: 4px; text-align: center; display: none; }
-    .success { background: #d4edda; color: #155724; }
-    .error { background: #f8d7da; color: #721c24; }
-    .loading { background: #fff3cd; color: #856404; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #4a5568; }
+    input, select { width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; }
+    input:focus, select:focus { outline: none; border-color: #667eea; }
+    button.action-btn { width: 100%; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 600; cursor: pointer; margin-top: 1rem; transition: transform 0.2s; }
+    button.action-btn:hover { transform: translateY(-2px); }
+    button.action-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+    .result { margin-top: 1.5rem; padding: 1rem; border-radius: 8px; text-align: center; font-weight: 600; display: none; }
+    .success { background: #c6f6d5; color: #22543d; }
+    .error { background: #fed7d7; color: #742a2a; }
+    .loading { background: #fef3c7; color: #92400e; }
+    .chart-container { margin-top: 1.5rem; text-align: center; }
+    .chart-container img { max-width: 100%; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .feature-item { display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid #e2e8f0; }
+    .feature-item:last-child { border-bottom: none; }
+    .upload-area { border: 2px dashed #667eea; border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s; }
+    .upload-area:hover { background: #f0f4ff; }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1>🌽 CMIP6 農產品價格預測系統</h1>
+<body class="p-4">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-4xl font-bold text-center text-white mb-6">🌽 CMIP6 農產品價格預測系統</h1>
     
-    <!-- 关键点：onsubmit 返回 false 防止默认跳转 -->
-    <form id="predictForm" onsubmit="handlePredict(event)">
+    <!-- 标签页导航 -->
+    <div class="flex justify-center mb-0">
+      <button class="tab-btn active" onclick="switchTab('predict')">🔮 價格預測</button>
+      <button class="tab-btn" onclick="switchTab('history')">📈 歷史價格</button>
+      <button class="tab-btn" onclick="switchTab('climate')">🌡️ 氣候數據</button>
+      <button class="tab-btn" onclick="switchTab('importance')">📊 模型解釋</button>
+      <button class="tab-btn" onclick="switchTab('batch')">📥 批量預測</button>
+    </div>
+
+    <!-- 🔮 价格预测 -->
+    <div id="predict" class="tab-content active">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">單筆價格預測</h2>
+      <form id="predictForm" onsubmit="handlePredict(event)">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-group">
+            <label>作物類型:</label>
+            <select id="crop" name="crop">
+              <option value="corn">玉米 (Corn)</option>
+              <option value="wheat">小麥 (Wheat)</option>
+              <option value="soybean">大豆 (Soybean)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>當前降雨量 (pr):</label><input type="number" step="0.1" id="pr" value="1.2"></div>
+          <div class="form-group"><label>前一期降雨量 (pr_lag1):</label><input type="number" step="0.1" id="pr_lag1" value="0.8"></div>
+          <div class="form-group"><label>前兩期降雨量 (pr_lag2):</label><input type="number" step="0.1" id="pr_lag2" value="1.0"></div>
+          <div class="form-group"><label>降雨標準差 (pr_std):</label><input type="number" step="0.1" id="pr_std" value="0.5"></div>
+          <div class="form-group"><label>前一期價格 (price_lag1):</label><input type="number" step="0.1" id="price_lag1" value="105.0"></div>
+          <div class="form-group"><label>前兩期價格 (price_lag2):</label><input type="number" step="0.1" id="price_lag2" value="102.0"></div>
+          <div class="form-group"><label>當前最高溫 (tasmax):</label><input type="number" step="0.1" id="tasmax" value="26.5"></div>
+          <div class="form-group"><label>前一期最高溫 (tasmax_lag1):</label><input type="number" step="0.1" id="tasmax_lag1" value="26.0"></div>
+          <div class="form-group"><label>前兩期最高溫 (tasmax_lag2):</label><input type="number" step="0.1" id="tasmax_lag2" value="25.8"></div>
+          <div class="form-group"><label>最高溫平均值 (tasmax_mean):</label><input type="number" step="0.1" id="tasmax_mean" value="26.2"></div>
+        </div>
+        <button type="submit" class="action-btn" id="predictBtn">預測價格</button>
+      </form>
+      <div id="predictResult" class="result"></div>
+      <div id="featureImportance" class="mt-4"></div>
+    </div>
+
+    <!-- 📈 历史价格 -->
+    <div id="history" class="tab-content">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">📈 歷史價格趨勢</h2>
       <div class="form-group">
-        <label>作物類型:</label>
-        <select id="crop" name="crop">
+        <label>選擇作物:</label>
+        <select id="historyCrop" onchange="loadHistoricalPrice()">
           <option value="corn">玉米 (Corn)</option>
           <option value="wheat">小麥 (Wheat)</option>
           <option value="soybean">大豆 (Soybean)</option>
         </select>
       </div>
+      <button onclick="loadHistoricalPrice()" class="action-btn">載入圖表</button>
+      <div id="historyChart" class="chart-container"></div>
+    </div>
 
-      <div class="form-group"><label>當前降雨量 (pr):</label><input type="number" step="0.1" id="pr" value="1.2"></div>
-      <div class="form-group"><label>前一期降雨量 (pr_lag1):</label><input type="number" step="0.1" id="pr_lag1" value="0.8"></div>
-      <div class="form-group"><label>前兩期降雨量 (pr_lag2):</label><input type="number" step="0.1" id="pr_lag2" value="1.0"></div>
-      <div class="form-group"><label>降雨標準差 (pr_std):</label><input type="number" step="0.1" id="pr_std" value="0.5"></div>
-      <div class="form-group"><label>前一期價格 (price_lag1):</label><input type="number" step="0.1" id="price_lag1" value="105.0"></div>
-      <div class="form-group"><label>前兩期價格 (price_lag2):</label><input type="number" step="0.1" id="price_lag2" value="102.0"></div>
-      <div class="form-group"><label>當前最高溫 (tasmax):</label><input type="number" step="0.1" id="tasmax" value="26.5"></div>
-      <div class="form-group"><label>前一期最高溫 (tasmax_lag1):</label><input type="number" step="0.1" id="tasmax_lag1" value="26.0"></div>
-      <div class="form-group"><label>前兩期最高溫 (tasmax_lag2):</label><input type="number" step="0.1" id="tasmax_lag2" value="25.8"></div>
-      <div class="form-group"><label>最高溫平均值 (tasmax_mean):</label><input type="number" step="0.1" id="tasmax_mean" value="26.2"></div>
+    <!-- 🌡️ 气候数据 -->
+    <div id="climate" class="tab-content">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">🌡️ 氣候數據可視化</h2>
+      <div class="form-group">
+        <label>選擇作物:</label>
+        <select id="climateCrop" onchange="loadClimateData()">
+          <option value="corn">玉米 (Corn)</option>
+          <option value="wheat">小麥 (Wheat)</option>
+          <option value="soybean">大豆 (Soybean)</option>
+        </select>
+      </div>
+      <button onclick="loadClimateData()" class="action-btn">載入圖表</button>
+      <div id="climateChart" class="chart-container"></div>
+    </div>
 
-      <button type="submit" id="submitBtn">預測價格</button>
-    </form>
+    <!-- 📊 模型解释 -->
+    <div id="importance" class="tab-content">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">📊 模型特徵重要性</h2>
+      <div class="form-group">
+        <label>選擇作物:</label>
+        <select id="importanceCrop" onchange="loadFeatureImportance()">
+          <option value="corn">玉米 (Corn)</option>
+          <option value="wheat">小麥 (Wheat)</option>
+          <option value="soybean">大豆 (Soybean)</option>
+        </select>
+      </div>
+      <button onclick="loadFeatureImportance()" class="action-btn">載入分析</button>
+      <div id="importanceChart" class="chart-container"></div>
+      <div id="importanceList" class="mt-4"></div>
+    </div>
 
-    <div id="result" class="result"></div>
+    <!-- 📥 批量预测 -->
+    <div id="batch" class="tab-content">
+      <h2 class="text-2xl font-bold mb-4 text-gray-800">📥 批量預測</h2>
+      <div class="form-group">
+        <label>選擇作物:</label>
+        <select id="batchCrop">
+          <option value="corn">玉米 (Corn)</option>
+          <option value="wheat">小麥 (Wheat)</option>
+          <option value="soybean">大豆 (Soybean)</option>
+        </select>
+      </div>
+      <div class="upload-area" onclick="document.getElementById('batchFile').click()">
+        <p class="text-gray-600">📁 點擊上傳 CSV 文件或拖拽至此</p>
+        <p class="text-sm text-gray-500 mt-2">CSV 需包含列：pr, pr_lag1, pr_lag2, pr_std, price_lag1, price_lag2, tasmax, tasmax_lag1, tasmax_lag2, tasmax_mean</p>
+        <input type="file" id="batchFile" accept=".csv" style="display:none" onchange="handleBatchPredict()">
+      </div>
+      <div id="batchResult" class="result"></div>
+      <div id="batchResults" class="mt-4 overflow-auto max-h-96"></div>
+    </div>
   </div>
 
   <script>
-    async function handlePredict(event) {
-      // 1. 阻止表单默认提交行为（防止页面刷新或 URL 跳转）
-      event.preventDefault();
+    // 标签页切换
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.querySelector(`button[onclick="switchTab('${tabId}')"]`).classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
 
-      const btn = document.getElementById('submitBtn');
-      const resultDiv = document.getElementById('result');
-      
-      // UI 状态更新
+    // 🔮 单笔预测
+    async function handlePredict(event) {
+      event.preventDefault();
+      const btn = document.getElementById('predictBtn');
+      const resultDiv = document.getElementById('predictResult');
       btn.disabled = true;
       btn.textContent = '預測中...';
       resultDiv.className = 'result loading';
       resultDiv.style.display = 'block';
-      resultDiv.textContent = '⏳ 正在連接伺服器進行預測...';
+      resultDiv.textContent = '⏳ 預測中...';
 
       try {
-        // 2. 收集数据
         const crop = document.getElementById('crop').value;
         const data = {
           pr: parseFloat(document.getElementById('pr').value),
@@ -84,32 +175,143 @@
           tasmax_mean: parseFloat(document.getElementById('tasmax_mean').value)
         };
 
-        // 3. 发送 POST 请求 (关键修复：数据在 body 中，URL 只有 crop)
         const response = await fetch(`/predict?crop=${crop}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ data: data }) 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: data })
         });
 
         const result = await response.json();
-
         if (response.ok) {
           resultDiv.className = 'result success';
-          resultDiv.textContent = `✅ 預測成功！預估價格為：${result.predicted_price.toFixed(2)}`;
+          resultDiv.textContent = `✅ 預測成功！預估價格：${result.predicted_price.toFixed(2)}`;
+          
+          // 显示特征重要性
+          if (result.feature_importance) {
+            let html = '<div class="mt-4 p-4 bg-gray-50 rounded-lg"><h3 class="font-bold mb-2">📊 特徵重要性：</h3>';
+            Object.entries(result.feature_importance)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .forEach(([feature, importance]) => {
+                html += `<div class="feature-item"><span>${feature}</span><span class="font-bold">${(importance * 100).toFixed(1)}%</span></div>`;
+              });
+            html += '</div>';
+            document.getElementById('featureImportance').innerHTML = html;
+          }
         } else {
           resultDiv.className = 'result error';
-          resultDiv.textContent = `❌ 預測失敗：${result.detail || '未知錯誤'}`;
+          resultDiv.textContent = `❌ 錯誤：${result.detail || '預測失敗'}`;
         }
-
       } catch (error) {
         resultDiv.className = 'result error';
-        resultDiv.textContent = `❌ 網絡錯誤：${error.message}`;
+        resultDiv.textContent = `❌ 錯誤：${error.message}`;
       } finally {
-        // 恢复按钮状态
         btn.disabled = false;
         btn.textContent = '預測價格';
+      }
+    }
+
+    // 📈 历史价格
+    async function loadHistoricalPrice() {
+      const crop = document.getElementById('historyCrop').value;
+      const chartDiv = document.getElementById('historyChart');
+      chartDiv.innerHTML = '<p class="text-gray-500">載入中...</p>';
+      
+      try {
+        const response = await fetch(`/api/historical-price-chart?crop=${crop}`);
+        const data = await response.json();
+        if (response.ok) {
+          chartDiv.innerHTML = `<img src="${data.chart}" alt="歷史價格圖表">`;
+        } else {
+          chartDiv.innerHTML = `<p class="text-red-500">錯誤：${data.detail}</p>`;
+        }
+      } catch (error) {
+        chartDiv.innerHTML = `<p class="text-red-500">錯誤：${error.message}</p>`;
+      }
+    }
+
+    // 🌡️ 气候数据
+    async function loadClimateData() {
+      const crop = document.getElementById('climateCrop').value;
+      const chartDiv = document.getElementById('climateChart');
+      chartDiv.innerHTML = '<p class="text-gray-500">載入中...</p>';
+      
+      try {
+        const response = await fetch(`/api/climate-chart?crop=${crop}`);
+        const data = await response.json();
+        if (response.ok) {
+          chartDiv.innerHTML = `<img src="${data.chart}" alt="氣候數據圖表">`;
+        } else {
+          chartDiv.innerHTML = `<p class="text-red-500">錯誤：${data.detail}</p>`;
+        }
+      } catch (error) {
+        chartDiv.innerHTML = `<p class="text-red-500">錯誤：${error.message}</p>`;
+      }
+    }
+
+    // 📊 模型解释
+    async function loadFeatureImportance() {
+      const crop = document.getElementById('importanceCrop').value;
+      const chartDiv = document.getElementById('importanceChart');
+      const listDiv = document.getElementById('importanceList');
+      chartDiv.innerHTML = '<p class="text-gray-500">載入中...</p>';
+      listDiv.innerHTML = '';
+      
+      try {
+        const response = await fetch(`/api/feature-importance-chart?crop=${crop}`);
+        const data = await response.json();
+        if (response.ok) {
+          chartDiv.innerHTML = `<img src="${data.chart}" alt="特徵重要性圖表">`;
+        } else {
+          chartDiv.innerHTML = `<p class="text-red-500">錯誤：${data.detail}</p>`;
+        }
+      } catch (error) {
+        chartDiv.innerHTML = `<p class="text-red-500">錯誤：${error.message}</p>`;
+      }
+    }
+
+    // 📥 批量预测
+    async function handleBatchPredict() {
+      const fileInput = document.getElementById('batchFile');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const crop = document.getElementById('batchCrop').value;
+      const resultDiv = document.getElementById('batchResult');
+      const resultsDiv = document.getElementById('batchResults');
+      
+      resultDiv.className = 'result loading';
+      resultDiv.style.display = 'block';
+      resultDiv.textContent = '⏳ 處理中...';
+      resultsDiv.innerHTML = '';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch(`/api/batch-predict?crop=${crop}`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+          resultDiv.className = 'result success';
+          resultDiv.textContent = `✅ 批量預測完成！成功：${result.success_count}, 失敗：${result.error_count}`;
+          
+          let html = '<table class="w-full text-sm"><thead><tr class="bg-gray-100"><th class="p-2 text-left">序號</th><th class="p-2 text-left">預測價格</th><th class="p-2 text-left">狀態</th></tr></thead><tbody>';
+          result.results.forEach(r => {
+            html += `<tr class="border-b"><td class="p-2">${r.row}</td><td class="p-2 font-bold">${r.predicted_price}</td><td class="p-2 text-green-600">${r.status}</td></tr>`;
+          });
+          html += '</tbody></table>';
+          resultsDiv.innerHTML = html;
+        } else {
+          resultDiv.className = 'result error';
+          resultDiv.textContent = `❌ 錯誤：${result.detail}`;
+        }
+      } catch (error) {
+        resultDiv.className = 'result error';
+        resultDiv.textContent = `❌ 錯誤：${error.message}`;
       }
     }
   </script>
