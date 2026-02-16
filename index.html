@@ -4,298 +4,114 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🌽 CMIP6 農產品價格預測系統</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Noto Sans TC', sans-serif;
-      background-color: #f9fafb;
-      color: #1f2937;
-    }
-    .card {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 2rem;
-      max-width: 600px;
-      margin: 2rem auto;
-    }
-    .input-group {
-      margin-bottom: 1rem;
-    }
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-      color: #4b5563;
-    }
-    input[type="number"] {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-    select {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-    button {
-      background-color: #10b981;
-      color: white;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: background-color 0.2s;
-    }
-    button:hover {
-      background-color: #059669;
-    }
-    .result {
-      margin-top: 1rem;
-      padding: 1rem;
-      background-color: #eef2f7;
-      border-radius: 6px;
-      display: none;
-    }
-    .loading {
-      display: none;
-      margin-top: 1rem;
-      color: #6b7280;
-    }
-  </style>
-</head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
-  <div class="card">
-    <h1 class="text-3xl font-bold text-center mb-6 flex items-center justify-center">
-      🌽 CMIP6 農產品價格預測系統
-    </h1>
-
-    <form id="predictForm">
-      <div class="input-group">
-        <label for="crop">作物類型:</label>
-        <select id="crop" name="crop" required>
-          <option value="corn">玉米 (Corn)</option>
-          <option value="wheat">小麥 (Wheat)</option>
-          <option value="soybean">大豆 (Soybean)</option>
-        </select>
-      </div>
-
-      <div class="input-group">
-        <label for="pr">當前降雨量 (pr):</label>
-        <input type="number" id="pr" name="pr" step="0.1" value="1.2" required />
-      </div>
-
-      <div class="input-group">
-        <label for="pr_lag1">前一期降雨量 (pr_lag1):</label>
-        <input type="number" id="pr_lag1" name="pr_lag1" step="0.1" value="0.8" required />
-      </div>
-
-      <div class="input-group">
-        <label for="pr_lag2">前兩期降雨量 (pr_lag2):</label>
-        <input type="number" id="pr_lag2" name="pr_lag2" step="0.1" value="1.0" required />
-      </div>
-
-      <div class="input-group">
-        <label for="pr_std">降雨標準差 (pr_std):</label>
-        <input type="number" id="pr_std" name="pr_std" step="0.1" value="0.5" required />
-      </div>
-
-      <div class="input-group">
-        <label for="price_lag1">前一期價格 (price_lag1):</label>
-        <input type="number" id="price_lag1" name="price_lag1" step="0.1" value="105.0" required />
-      </div>
-
-      <div class="input-group">
-        <label for="price_lag2">前兩期價格 (price_lag2):</label>
-        <input type="number" id="price_lag2" name="price_lag2" step="0.1" value="102.0" required />
-      </div>
-
-      <div class="input-group">
-        <label for="tasmax">當前最高溫 (tasmax):</label>
-        <input type="number" id="tasmax" name="tasmax" step="0.1" value="26.5" required />
-      </div>
-
-      <div class="input-group">
-        <label for="tasmax_lag1">前一期最高溫 (tasmax_lag1):</label>
-        <input type="number" id="tasmax_lag1" name="tasmax_lag1" step="0.1" value="26.0" required />
-      </div>
-
-      <div class="input-group">
-        <label for="tasmax_lag2">前兩期最高溫 (tasmax_lag2):</label>
-        <input type="number" id="tasmax_lag2" name="tasmax_lag2" step="0.1" value="25.8" required />
-      </div>
-
-      <div class="input-group">
-        <label for="tasmax_mean">最高溫平均值 (tasmax_mean):</label>
-        <input type="number" id="tasmax_mean" name="tasmax_mean" step="0.1" value="26.2" required />
-      </div>
-
-      <button type="submit">預測價格</button>
-    </form>
-
-    <div class="loading" id="loading">正在預測中...</div>
-    <div class="result" id="result"></div>
-  </div>
-
-  <script>
-    document.getElementById("predictForm").addEventListener("submit", async function(e) {
-      e.preventDefault();
-      const loading = document.getElementById("loading");
-      const result = document.getElementById("result");
-      loading.style.display = "block";
-      result.style.display = "none";
-
-      try {
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData.entries());
-
-        const response = await fetch("/predict?crop=" + data.crop, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data })
-        });
-
-        if (!response.ok) throw new Error("預測失敗");
-
-        const res = await response.json();
-        result.innerHTML = `<strong>預估價格：</strong> ${res.predicted_price.toFixed(2)} 元`;
-        result.style.display = "block";
-      } catch (error) {
-        result.innerHTML = `<strong>錯誤：</strong> ${error.message}`;
-        result.style.display = "block";
-        result.style.backgroundColor = "#fee2e2";
-      } finally {
-        loading.style.display = "none";
-      }
-    });
-  </script>
-</body>
-</html><!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🌽 CMIP6 農產品價格預測系統</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      padding: 2rem;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      padding: 2rem;
-    }
-    h1 { text-align: center; color: #2d3748; margin-bottom: 1.5rem; }
+    /* 保持你喜欢的样式，这里简化展示 */
+    body { font-family: sans-serif; background: #f0f2f5; padding: 2rem; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    h1 { text-align: center; color: #333; }
     .form-group { margin-bottom: 1rem; }
-    label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #4a5568; }
-    input, select {
-      width: 100%;
-      padding: 0.75rem;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
-      font-size: 1rem;
-    }
-    input:focus, select:focus { outline: none; border-color: #667eea; }
-    button {
-      width: 100%;
-      padding: 1rem;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 1rem;
-    }
-    .result {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      border-radius: 8px;
-      text-align: center;
-      font-weight: 600;
-      display: none;
-    }
-    .success { background: #c6f6d5; color: #22543d; }
-    .error { background: #fed7d7; color: #742a2a; }
-    .loading { background: #fef3c7; color: #92400e; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+    input, select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    button { width: 100%; padding: 0.75rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    button:hover { background: #0056b3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .result { margin-top: 1rem; padding: 1rem; border-radius: 4px; text-align: center; display: none; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .loading { background: #fff3cd; color: #856404; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>🌽 CMIP6 農產品價格預測系統</h1>
-    <form id="predictForm">
+    
+    <!-- 关键点：onsubmit 返回 false 防止默认跳转 -->
+    <form id="predictForm" onsubmit="handlePredict(event)">
       <div class="form-group">
-        <label for="crop">作物類型:</label>
-        <select id="crop" name="crop" required>
+        <label>作物類型:</label>
+        <select id="crop" name="crop">
           <option value="corn">玉米 (Corn)</option>
           <option value="wheat">小麥 (Wheat)</option>
           <option value="soybean">大豆 (Soybean)</option>
         </select>
       </div>
-      <div class="form-group"><label for="pr">當前降雨量 (pr):</label><input type="number" id="pr" name="pr" step="0.1" value="1.2" required></div>
-      <div class="form-group"><label for="pr_lag1">前一期降雨量 (pr_lag1):</label><input type="number" id="pr_lag1" name="pr_lag1" step="0.1" value="0.8" required></div>
-      <div class="form-group"><label for="pr_lag2">前兩期降雨量 (pr_lag2):</label><input type="number" id="pr_lag2" name="pr_lag2" step="0.1" value="1.0" required></div>
-      <div class="form-group"><label for="pr_std">降雨標準差 (pr_std):</label><input type="number" id="pr_std" name="pr_std" step="0.1" value="0.5" required></div>
-      <div class="form-group"><label for="price_lag1">前一期價格 (price_lag1):</label><input type="number" id="price_lag1" name="price_lag1" step="0.1" value="105.0" required></div>
-      <div class="form-group"><label for="price_lag2">前兩期價格 (price_lag2):</label><input type="number" id="price_lag2" name="price_lag2" step="0.1" value="102.0" required></div>
-      <div class="form-group"><label for="tasmax">當前最高溫 (tasmax):</label><input type="number" id="tasmax" name="tasmax" step="0.1" value="26.5" required></div>
-      <div class="form-group"><label for="tasmax_lag1">前一期最高溫 (tasmax_lag1):</label><input type="number" id="tasmax_lag1" name="tasmax_lag1" step="0.1" value="26.0" required></div>
-      <div class="form-group"><label for="tasmax_lag2">前兩期最高溫 (tasmax_lag2):</label><input type="number" id="tasmax_lag2" name="tasmax_lag2" step="0.1" value="25.8" required></div>
-      <div class="form-group"><label for="tasmax_mean">最高溫平均值 (tasmax_mean):</label><input type="number" id="tasmax_mean" name="tasmax_mean" step="0.1" value="26.2" required></div>
-      <button type="submit">預測價格</button>
+
+      <div class="form-group"><label>當前降雨量 (pr):</label><input type="number" step="0.1" id="pr" value="1.2"></div>
+      <div class="form-group"><label>前一期降雨量 (pr_lag1):</label><input type="number" step="0.1" id="pr_lag1" value="0.8"></div>
+      <div class="form-group"><label>前兩期降雨量 (pr_lag2):</label><input type="number" step="0.1" id="pr_lag2" value="1.0"></div>
+      <div class="form-group"><label>降雨標準差 (pr_std):</label><input type="number" step="0.1" id="pr_std" value="0.5"></div>
+      <div class="form-group"><label>前一期價格 (price_lag1):</label><input type="number" step="0.1" id="price_lag1" value="105.0"></div>
+      <div class="form-group"><label>前兩期價格 (price_lag2):</label><input type="number" step="0.1" id="price_lag2" value="102.0"></div>
+      <div class="form-group"><label>當前最高溫 (tasmax):</label><input type="number" step="0.1" id="tasmax" value="26.5"></div>
+      <div class="form-group"><label>前一期最高溫 (tasmax_lag1):</label><input type="number" step="0.1" id="tasmax_lag1" value="26.0"></div>
+      <div class="form-group"><label>前兩期最高溫 (tasmax_lag2):</label><input type="number" step="0.1" id="tasmax_lag2" value="25.8"></div>
+      <div class="form-group"><label>最高溫平均值 (tasmax_mean):</label><input type="number" step="0.1" id="tasmax_mean" value="26.2"></div>
+
+      <button type="submit" id="submitBtn">預測價格</button>
     </form>
+
     <div id="result" class="result"></div>
   </div>
+
   <script>
-    document.getElementById('predictForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
+    async function handlePredict(event) {
+      // 1. 阻止表单默认提交行为（防止页面刷新或 URL 跳转）
+      event.preventDefault();
+
+      const btn = document.getElementById('submitBtn');
       const resultDiv = document.getElementById('result');
-      const button = this.querySelector('button');
+      
+      // UI 状态更新
+      btn.disabled = true;
+      btn.textContent = '預測中...';
       resultDiv.className = 'result loading';
-      resultDiv.textContent = '⏳ 預測中...';
       resultDiv.style.display = 'block';
-      button.disabled = true;
+      resultDiv.textContent = '⏳ 正在連接伺服器進行預測...';
+
       try {
-        const formData = new FormData(this);
-        const data = {};
-        formData.forEach((value, key) => { data[key] = parseFloat(value); });
-        const crop = data.crop;
-        delete data.crop;
-        // ✅ 关键修复：包裹在 { data: ... } 中
-        const response = await fetch('/predict?crop=' + crop, {
+        // 2. 收集数据
+        const crop = document.getElementById('crop').value;
+        const data = {
+          pr: parseFloat(document.getElementById('pr').value),
+          pr_lag1: parseFloat(document.getElementById('pr_lag1').value),
+          pr_lag2: parseFloat(document.getElementById('pr_lag2').value),
+          pr_std: parseFloat(document.getElementById('pr_std').value),
+          price_lag1: parseFloat(document.getElementById('price_lag1').value),
+          price_lag2: parseFloat(document.getElementById('price_lag2').value),
+          tasmax: parseFloat(document.getElementById('tasmax').value),
+          tasmax_lag1: parseFloat(document.getElementById('tasmax_lag1').value),
+          tasmax_lag2: parseFloat(document.getElementById('tasmax_lag2').value),
+          tasmax_mean: parseFloat(document.getElementById('tasmax_mean').value)
+        };
+
+        // 3. 发送 POST 请求 (关键修复：数据在 body 中，URL 只有 crop)
+        const response = await fetch(`/predict?crop=${crop}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: data })
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ data: data }) 
         });
+
         const result = await response.json();
+
         if (response.ok) {
           resultDiv.className = 'result success';
-          resultDiv.textContent = '✅ 預測成功！預估價格：' + result.predicted_price.toFixed(2);
+          resultDiv.textContent = `✅ 預測成功！預估價格為：${result.predicted_price.toFixed(2)}`;
         } else {
           resultDiv.className = 'result error';
-          resultDiv.textContent = '❌ 錯誤：' + (result.detail || '預測失敗');
+          resultDiv.textContent = `❌ 預測失敗：${result.detail || '未知錯誤'}`;
         }
+
       } catch (error) {
         resultDiv.className = 'result error';
-        resultDiv.textContent = '❌ 錯誤：' + error.message;
+        resultDiv.textContent = `❌ 網絡錯誤：${error.message}`;
       } finally {
-        button.disabled = false;
+        // 恢复按钮状态
+        btn.disabled = false;
+        btn.textContent = '預測價格';
       }
-    });
+    }
   </script>
 </body>
 </html>
