@@ -1,3 +1,14 @@
-__pycache__
+__pycache__/
 *.pyc
-cmip6_price_forecaster/
+*.pyo
+*.log
+.env
+.venv/
+venv/
+.DS_Store
+*.pdf
+*.nc
+data/raw/
+data/final/
+models/*.joblib
+!models/.gitkeep
