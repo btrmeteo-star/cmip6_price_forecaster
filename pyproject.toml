@@ -1,9 +1,0 @@
-[project]
-dependencies = [
-    "xarray>=2023.6",      # 移除 <2024.0 上限
-    "fastapi>=0.111",
-    "uvicorn[standard]>=0.30",  # 升级以匹配 fasthtml
-    "intake-esm",
-    "zarr",
-    "gcsfs",
-]
